@@ -443,7 +443,8 @@ const LAYERS_TOP = [...ARCH.layers].reverse();   // 画面では建物と同じ�
 const WISDOM_PLACES = new Map();
 for (const x of [...ARCH.layers, ...ARCH.cross]) for (const w of x.wisdom) WISDOM_PLACES.set(w, [...(WISDOM_PLACES.get(w) || []), x.id]);
 // システムの呼び名 → 項目。括弧の外の名前・括弧の中の正式な呼び方・別名（短すぎる・一般的すぎるものは除く）。長い順に当てる
-const SYS_GENERIC = new Set(['PDCA', 'POS', 'Eel', 'HP', 'レシピ', '議事録', 'ポータル', '新基盤', 'ホームページ', '部門損益']);
+// ふつうの言葉としても使う別名（自動リンクにしない）。社内の言葉なので台本に書かず、中身から受け取る
+const SYS_GENERIC = new Set(DATA.sysGeneric || []);
 const SYS_NAMES = ITEMS.filter(x => x.kind === 'system').flatMap(s => {
   const short = s.name.replace(/（.*?）/g, '').trim();
   const inner = (s.name.match(/（(.*?)）/) || [])[1] || '';
@@ -1525,7 +1526,7 @@ render();
 // ログインは同じタブで Google へ移って戻る方式（窓＝ポップアップの方式は、2段階認証から戻ると結果が届かない件があった）
 (() => {
   'use strict';
-  const CONFIG = {"gasUrl": "", "clientId": "1072945615483-74jadmaet56chvhkfh2cpt4ae9dvh140.apps.googleusercontent.com", "redirectUri": "https://acoop-ai.github.io/shikumi-release/"};                 // { gasUrl, clientId, redirectUri }（build.py が web/config.json から差し込む）
+  const CONFIG = {"gasUrl": "https://script.google.com/macros/s/AKfycbxU-1heh_7zIBVvKsSfNdZU_1YKm_AP5Hr5Wpa192KDCB_2Ma84jo5d0YViMy3xZog/exec", "clientId": "1072945615483-74jadmaet56chvhkfh2cpt4ae9dvh140.apps.googleusercontent.com", "redirectUri": "https://acoop-ai.github.io/shikumi-release/"};                 // { gasUrl, clientId, redirectUri }（build.py が web/config.json から差し込む）
   const TOKEN_KEY = 'shikumi_token_v1';          // { t: 札, exp: 期限 }。札は1時間で切れる
   const STATE_KEY = 'shikumi_oauth_state_v1';    // [{ s: 合言葉, t: 出した時刻, h: ログイン前に見ていた画面 }]
   const STATE_MAX_AGE = 10 * 60 * 1000;          // 合言葉は10分・1回限り
