@@ -741,7 +741,7 @@ function renderNav(route) {
   nav.replaceChildren(
     a('#/', '全体マップ', null, 'home'),
     a('#/arch', 'しくみの全体図', '6層・4柱', 'arch'),
-    ...(DATA.sysmap ? [a('#/sysmap', 'システム地図', null, 'sysmap')] : []),
+    ...(DATA.sysmap ? [a('#/sysmap', 'システム地図', '別ページ', 'sysmap')] : []),
     el('div', { class: 'sep' }),
     a('#/systems', 'システム別の診断', counts.system, 'systems'),
     a('#/wisdom', '知恵（困ったとき）', counts.wisdom, 'wisdom'),
@@ -1438,12 +1438,19 @@ function viewSysmap() {
   };
   addEventListener('message', onMsg);
   viewCleanups.push(() => removeEventListener('message', onMsg));
+  // 地図は辞書の補いなので、辞書の枠に組み込まず別ページとして画面いっぱいに出す（いつでも切り離せる。2026-09-19 PO）。
+  // 戻り方は2つ: この帯の「ひとつ前に戻る」／ブラウザの戻る。どちらも前の画面の同じ位置へ戻る
+  const back = el('button', { type: 'button', class: 'fp-back', text: '← ひとつ前に戻る' });
+  back.addEventListener('click', () => { if (stack.length) backBtn.click(); else go('#/'); });
   return [
-    el('h1', { text: 'システム地図' }),
-    el('p', { class: 'sub lead' }, '社内のシステムが、どこからデータを受け取り、どう加工し、どこへ届けているかの地図です。',
-      el('b', { text: '地図の中のシステム名（点線）を押すと、辞書の項目が開きます。' })),
+    el('div', { class: 'fp-bar' },
+      back,
+      el('div', { class: 'fp-title' },
+        el('b', { text: 'システム地図' }),
+        el('span', { class: 'fp-hint', text: '地図の中のシステム名（点線）を押すと、辞書の項目が開きます' })),
+      el('span', { class: 'fp-src', text: `出典：${SM.source}（原本の更新 ${SM.updated}）` }),
+      link('#/', { class: 'fp-home' }, '辞書のトップへ')),
     frame,
-    el('p', { class: 'src', text: `出典：${SM.source}（原本の更新 ${SM.updated}）` }),
   ];
 }
 
@@ -1471,7 +1478,7 @@ function viewAbout() {
     el('pre', { class: 'body', style: 'white-space:pre-wrap', text: META.flow }),
     ...(WEB ? [
       el('h2', { text: '誰が見られるか' }),
-      p('会社指定の4つのドメインの Google アカウントでログインした人だけが見られます。社外の人・個人の Gmail では中身が届きません。'),
+      p('許可された会社の Google アカウントでログインした人だけが見られます（範囲は窓口の GAS の設定で決める）。社外の人・個人の Gmail では中身が届きません。'),
       p('画面の枠は公開の場所から届きますが、中身はログインを確かめてから届けています。中身を印刷やファイルにして社外へ渡さないでください。'),
     ] : [
       el('h2', { text: 'このファイルについて' }),
@@ -1504,6 +1511,7 @@ function render(fromTyping, restoreY) {
   else { nodes = viewMap(); key = 'home'; }
   if (route !== 'q' && !fromTyping) qInput.value = '';
   if (route === 'item') { const it = byId.get(decodeURIComponent(arg)); key = it ? (it.kind === 'system' ? 'systems' : it.kind) : ''; }
+  document.body.classList.toggle('fullpage', route === 'sysmap');   // 別ページとして出す画面（サイドと検索を隠す）
   view.replaceChildren(...[nodes].flat());
   view.classList.toggle('wide', key === 'home' || key === 'sysmap' || (route === 'arch' && (!arg || arg === 'cards')));   // 図とカードは横長の画面を使い切る
   if (route === 'item') view.querySelectorAll('.body, .oneline').forEach(n => markTerms(n, decodeURIComponent(arg)));
@@ -1521,7 +1529,7 @@ render();
 // 信頼境界（ここが守りの要）:
 //   - この画面の枠（GitHub Pages・公開）には中身を一切置かない。中身は GAS がログインを確かめてから返す
 //   - Google から戻ったアドレスの # 以降は誰でも作れる値。この端末で出した合言葉（state）と一致したときだけ使う
-//   - 札（アクセストークン）が本物で、会社指定の4ドメインのアカウントかは、GAS が毎回 Google に問い合わせて確かめる。
+//   - 札（アクセストークン）が本物で、見られる会社のアカウントかは、GAS が毎回 Google に問い合わせて確かめる（範囲は GAS の設定）。
 //     画面の側でアカウントを判断して開けることはしない（画面の判断は書き換えられるため）
 // ログインは同じタブで Google へ移って戻る方式（窓＝ポップアップの方式は、2段階認証から戻ると結果が届かない件があった）
 (() => {
