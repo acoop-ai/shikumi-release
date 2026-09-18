@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-iwMy7hgVVbXe1xZvit0PODv5W3X/tr2EG9cIWZIezsg=' 'sha256-OphrZGeDPXNC9c+GYoHsVA5TSl0AuqRdrRACbVZUQVo=' 'sha256-VTwOKolic+kUijL+H/9d2d7/+n/vLlcLPnhRqdIdjh4='; style-src 'self' 'unsafe-inline'; img-src data:; font-src 'none'; connect-src https://script.google.com https://script.googleusercontent.com https://oauth2.googleapis.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<script src="boot.js?v=c830f0154b"></script>
+<title>しくみの辞書</title>
+<link rel="stylesheet" href="style.css?v=ab3f02f7ee">
+</head>
+<body>
+<aside id="side">
+  <div class="brand">しくみの辞書<small>名前でも、困りごとでも引ける</small></div>
+  <button id="back" type="button">← ひとつ前に戻る</button>
+  <nav id="nav"></nav>
+  <div class="acct" id="acct" hidden></div>
+  <div class="ver" id="ver"></div>
+</aside>
+<main id="main">
+  <div id="bar">
+    <div class="qwrap"><input id="q" type="search" autocomplete="off" placeholder="名前や困りごとを入れてください（例：画面が古いまま／CSP／ウイルス）" aria-label="辞書を検索"></div>
+    <div class="hint">「/」キーで検索欄へ。言葉を空白で区切ると、すべてを含む項目に絞り込みます。</div>
+  </div>
+  <div id="view"></div>
+</main>
+<div id="tip" role="tooltip"></div>
+<div id="gate" class="gate" hidden>
+  <div class="gate-card" role="dialog" aria-labelledby="gate-title">
+    <div class="gate-brand" id="gate-title">しくみの辞書</div>
+    <p class="gate-lead">社内のしくみ・用語・困ったときの知恵を、名前でも困りごとでも引ける辞書です。</p>
+    <p class="gate-msg" id="gate-msg" aria-live="polite">確かめています…</p>
+    <div class="gate-busy" id="gate-busy" hidden><i></i></div>
+    <button type="button" class="gate-btn" id="gate-login" hidden>Google でログイン</button>
+    <p class="gate-note">会社指定の4つのドメインの Google アカウントだけが入れます。個人の Gmail では中身は見られません。</p>
+  </div>
+</div>
+
+<script src="app.js?v=af56d3f79e"></script>
+</body>
+</html>
