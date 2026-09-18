@@ -1442,6 +1442,13 @@ function viewSysmap() {
   // 戻り方は2つ: この帯の「ひとつ前に戻る」／ブラウザの戻る。どちらも前の画面の同じ位置へ戻る
   const back = el('button', { type: 'button', class: 'fp-back', text: '← ひとつ前に戻る' });
   back.addEventListener('click', () => { if (stack.length) backBtn.click(); else go('#/'); });
+  // 幅の既定は、辞書の本文と同じ幅（図が大きくなりすぎて本文の文字が小さく見えないように。2026-09-19 PO）。押すと画面の幅まで広げる
+  document.body.classList.remove('fp-wide');
+  const wide = el('button', { type: 'button', class: 'fp-wide-btn', text: '⟷ 横いっぱいに広げる' });
+  wide.addEventListener('click', () => {
+    const on = document.body.classList.toggle('fp-wide');
+    wide.textContent = on ? '標準の幅に戻す' : '⟷ 横いっぱいに広げる';
+  });
   return [
     el('div', { class: 'fp-bar' },
       back,
@@ -1449,6 +1456,7 @@ function viewSysmap() {
         el('b', { text: 'システム地図' }),
         el('span', { class: 'fp-hint', text: '地図の中のシステム名（点線）を押すと、辞書の項目が開きます' })),
       el('span', { class: 'fp-src', text: `出典：${SM.source}（原本の更新 ${SM.updated}）` }),
+      wide,
       link('#/', { class: 'fp-home' }, '辞書のトップへ')),
     frame,
   ];
@@ -1512,6 +1520,7 @@ function render(fromTyping, restoreY) {
   if (route !== 'q' && !fromTyping) qInput.value = '';
   if (route === 'item') { const it = byId.get(decodeURIComponent(arg)); key = it ? (it.kind === 'system' ? 'systems' : it.kind) : ''; }
   document.body.classList.toggle('fullpage', route === 'sysmap');   // 別ページとして出す画面（サイドと検索を隠す）
+  if (route !== 'sysmap') document.body.classList.remove('fp-wide');
   view.replaceChildren(...[nodes].flat());
   view.classList.toggle('wide', key === 'home' || key === 'sysmap' || (route === 'arch' && (!arg || arg === 'cards')));   // 図とカードは横長の画面を使い切る
   if (route === 'item') view.querySelectorAll('.body, .oneline').forEach(n => markTerms(n, decodeURIComponent(arg)));

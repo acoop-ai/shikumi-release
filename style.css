@@ -446,11 +446,16 @@ body.fullpage #side,body.fullpage #bar{display:none}
 body.fullpage #main{margin-left:0}
 body.fullpage #view{padding:0;max-width:none;height:100vh;height:100dvh;display:flex;flex-direction:column}
 .fp-bar{flex:none;display:flex;align-items:center;gap:14px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
-.fp-back,.fp-home{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap}
-.fp-back:hover,.fp-home:hover{background:var(--soft)}
+.fp-back,.fp-home,.fp-wide-btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap}
+.fp-back:hover,.fp-home:hover,.fp-wide-btn:hover{background:var(--soft)}
 .fp-title{flex:1;min-width:0;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
 .fp-hint{font-size:13px;color:var(--sub)}
-body.fullpage iframe.sysmap{flex:1 1 auto;height:auto;min-height:0;border:0;border-radius:0;margin:0}
+/* 幅の既定は、辞書の本文と同じ幅（サイドの分を除いた幅）。地図の図が大きくなりすぎて、本文の文字が小さく見えないように（2026-09-19 PO）。
+   「横いっぱいに広げる」で画面の幅まで */
+body.fullpage iframe.sysmap{flex:1 1 auto;height:auto;min-height:0;width:calc(100% - var(--side) - 64px);margin:0 auto;
+  border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:0}
+body.fullpage.fp-wide iframe.sysmap{width:100%;border-left:0;border-right:0}
+@media (max-width:900px){body.fullpage iframe.sysmap{width:100%;border-left:0;border-right:0}.fp-wide-btn{display:none}}
 .fp-src{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%}
 @media (max-width:1100px){.fp-src{display:none}}
 @media (max-width:640px){.fp-hint{display:none}}
