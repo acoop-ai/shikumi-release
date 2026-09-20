@@ -539,6 +539,7 @@ body.locked #side,body.locked #main,body.locked #tip{display:none}
 .gd-q{font-size:16px;font-weight:700;background:var(--accent-soft);border-radius:8px;padding:10px 14px;margin:0 0 12px}
 .gd-note{font-size:13.5px;color:var(--sub);margin:0 0 10px}
 .gd-warn{border:1px solid var(--wip);background:var(--wip-bg);border-radius:8px;padding:10px 14px;margin:0 0 12px}
+.gd-h4{font-size:14.5px;margin:16px 0 6px}
 .gd-faq dt{font-weight:700;margin:12px 0 4px}
 .gd-faq dd{margin:0 0 4px;padding-left:1.1em;border-left:2px solid var(--line)}
 .gd-top{display:inline-block;margin-top:4px;font-size:12.5px;color:var(--sub);text-decoration:none}
