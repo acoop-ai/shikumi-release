@@ -429,7 +429,7 @@ const ITEMS = DATA.items;
 const VIEWPOINTS = DATA.viewpoints;
 const LEGEND = DATA.legend;
 const byId = new Map(ITEMS.map(x => [x.id, x]));
-const KIND_LABEL = { term: '用語', wisdom: '知恵', system: 'システム診断', arch: '全体図' };
+const KIND_LABEL = { term: '用語', wisdom: '知恵', system: 'システム診断', arch: '全体図', guide: '利用ガイド' };
 const ARCH = DATA.arch;
 const LAYER_BY_ID = new Map(ARCH.layers.map(x => [x.id, x]));
 const CROSS_BY_ID = new Map(ARCH.cross.map(x => [x.id, x]));
@@ -733,7 +733,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- サイドの案内 ----------
-const counts = { term: 0, wisdom: 0, system: 0, arch: 0 };
+const counts = { term: 0, wisdom: 0, system: 0, arch: 0, guide: 0 };
 for (const it of ITEMS) counts[it.kind]++;
 function renderNav(route) {
   const nav = $('#nav');
@@ -749,7 +749,7 @@ function renderNav(route) {
     el('div', { class: 'sep' }),
     a('#/path', '学ぶ順路', '準備中', 'path', true),
     a('#/ai', 'AIエージェントの準備', DATA.ai_pack ? `V${DATA.ai_pack.version}` : null, 'ai'),
-    a('#/guide', 'AIエージェント利用ガイド', '準備中', 'guide', true),
+    a('#/guide', 'AIエージェント利用ガイド', DATA.guide ? `全${DATA.guide.chapters.length}章` : '準備中', 'guide', !DATA.guide),
     el('div', { class: 'sep' }),
     a('#/about', 'この辞書について', null, 'about'),
   );
@@ -1462,6 +1462,105 @@ function viewSysmap() {
   ];
 }
 
+// ---------- AIエージェント利用ガイド ----------
+function viewGuide(anchor) {
+  const G = DATA.guide;
+  const chapters = G.chapters;
+  const toc = el('nav', { class: 'gd-toc', 'aria-label': '章のもくじ' },
+    el('span', { class: 'gd-toc-h', text: 'もくじ' }),
+    ...G.parts.flatMap(pt => [
+      el('span', { class: 'gd-toc-p', text: pt.name }),
+      ...chapters.filter(c => c.part === pt.id).map(c =>
+        link('#/guide/' + c.id, { class: 'gd-toc-a', 'data-ch': c.id },
+          el('span', { class: 'gd-toc-n', text: c.no }), el('span', { text: c.title }))),
+    ]));
+
+  const secs = chapters.map(c => {
+    const body = el('div', { class: 'gd-body' });
+    body.innerHTML = c.html;               // 作成時に無害化済みの HTML だけがここに来る
+    return el('section', { class: 'gd-sec', id: 'gd-' + c.id },
+      el('h2', { class: 'gd-h2' }, el('span', { class: 'gd-n', text: c.no }), el('span', { text: c.title })),
+      c.lead ? el('p', { class: 'gd-lead', text: c.lead }) : null,
+      body,
+      el('a', { class: 'gd-top', href: '#/guide', text: '↑ もくじへ' }));
+  });
+
+  const main = el('div', { class: 'gd-main' },
+    el('div', { class: 'gd-intro' },
+      el('span', { class: 'gd-intro-h', text: G.intro.head }),
+      el('ul', { class: 'gd-intro-l' }, ...G.intro.points.map(t => { const li = el('li'); li.innerHTML = t; return li; })),
+      el('table', { class: 'gd-t gd-check' }, el('tbody', null,
+        ...G.intro.check.map(([q, a]) => el('tr', null, el('td', null, el('b', { text: q })), el('td', { text: a })))))),
+    ...secs,
+    el('div', { class: 'gd-contact' },
+      el('span', { class: 'gd-intro-h', text: G.contact.head }),
+      el('table', { class: 'gd-t' }, el('tbody', null,
+        ...G.contact.rows.map(([k, v]) => el('tr', null, el('td', { text: k }), el('td', { text: v }))))),
+      el('p', { class: 'gd-note', text: G.contact.note })),
+    el('p', { class: 'gd-src', text: G.source }));
+
+  // 本文は、この面の中だけを流す（サイドを隠した別ページ。もくじは面の中に留まる）
+  const page = el('div', { class: 'gd-page' }, el('div', { class: 'gd-wrap' }, main, toc));
+
+  // 読んでいる章を、もくじで光らせる
+  // 位置から選ぶ（面の上から1/3の線を越えた最後の章）。見張りの仕掛けに頼らないので、どの環境でも同じに動く
+  let cur = '';
+  const mark = () => {
+    const base = page.getBoundingClientRect().top;
+    const line = base + page.clientHeight / 3;
+    let id = chapters[0].id;
+    for (const sec of secs) {
+      if (sec.getBoundingClientRect().top - line <= 0) id = sec.id.replace('gd-', '');
+    }
+    if (id === cur) return;
+    cur = id;
+    for (const a of toc.querySelectorAll('.gd-toc-a')) a.classList.toggle('on', a.dataset.ch === id);
+  };
+  // 間引きはタイマーで行う（画面が隠れている間も同じ動きになる。描画待ちの仕掛けは止まることがある）
+  let tick = 0;
+  const onScroll = () => { if (tick) return; tick = setTimeout(() => { tick = 0; mark(); }, 60); };
+  page.addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+
+  // もくじを押したときは、画面を作り直さずにその章まで流す（作り直すと位置が飛ぶ。2026-09-20 PO）
+  const jump = (id, smooth) => {
+    const t = document.getElementById('gd-' + id);
+    if (!t) return;
+    page.scrollTo({ top: t.offsetTop - 8, behavior: smooth ? 'smooth' : 'auto' });
+    history.replaceState(null, '', '#/guide/' + id);
+    setTimeout(mark, smooth ? 400 : 0);
+  };
+  toc.addEventListener('click', e => {
+    const a = e.target.closest('.gd-toc-a');
+    if (!a) return;
+    e.preventDefault();
+    jump(a.dataset.ch, true);
+  });
+  main.addEventListener('click', e => {
+    const a = e.target.closest('.gd-top');
+    if (!a) return;
+    e.preventDefault();
+    page.scrollTo({ top: 0, behavior: 'smooth' });
+    history.replaceState(null, '', '#/guide');
+  });
+
+  const first = setTimeout(() => { if (anchor) jump(anchor, false); else mark(); }, 0);
+  viewCleanups.push(() => { clearTimeout(first); if (tick) clearTimeout(tick); removeEventListener('resize', onScroll); });
+
+  const back = el('button', { type: 'button', class: 'fp-back', text: '← ひとつ前に戻る' });
+  back.addEventListener('click', () => { if (stack.length) backBtn.click(); else go('#/'); });
+  return [
+    el('div', { class: 'fp-bar' },
+      back,
+      el('div', { class: 'fp-title' },
+        el('b', { text: G.title }),
+        el('span', { class: 'fp-hint', text: G.sub })),
+      el('span', { class: 'fp-src', text: `${G.version}・${G.updated} 更新` }),
+      link('#/', { class: 'fp-wide-btn', text: '辞書のトップへ' })),
+    page,
+  ];
+}
+
 function viewSoon(kind) {
   const text = kind === 'path'
     ? ['学ぶ順路（準備中）', '初期の教科書（17章・導入手順で学ぶ形）を、この辞書の項目で並べ直します。項目は1か所にだけ書き、順路はその並び方を持つだけにします。']
@@ -1514,12 +1613,14 @@ function render(fromTyping, restoreY) {
     nodes = sub === 'layer' ? viewArchLayer(id) : sub === 'cross' ? viewArchCross(id) : sub === 'cards' ? viewArchCards() : sub === 'terms' ? viewArchTerms() : viewArch();
   }
   else if (route === 'ai') nodes = viewAi();
-  else if (route === 'path' || route === 'guide') nodes = viewSoon(route);
+  else if (route === 'guide') nodes = DATA.guide ? viewGuide(decodeURIComponent(arg)) : viewSoon('guide');
+  else if (route === 'path') nodes = viewSoon(route);
   else if (route === 'about') nodes = viewAbout();
   else { nodes = viewMap(); key = 'home'; }
   if (route !== 'q' && !fromTyping) qInput.value = '';
   if (route === 'item') { const it = byId.get(decodeURIComponent(arg)); key = it ? (it.kind === 'system' ? 'systems' : it.kind) : ''; }
-  document.body.classList.toggle('fullpage', route === 'sysmap');   // 別ページとして出す画面（サイドと検索を隠す）
+  // 別ページとして出す画面（サイドと検索を隠す）。地図とガイドは読む面が広いほうがよい（2026-09-20 PO）
+  document.body.classList.toggle('fullpage', route === 'sysmap' || (route === 'guide' && !!DATA.guide));
   if (route !== 'sysmap') document.body.classList.remove('fp-wide');
   view.replaceChildren(...[nodes].flat());
   view.classList.toggle('wide', key === 'home' || key === 'sysmap' || (route === 'arch' && (!arg || arg === 'cards')));   // 図とカードは横長の画面を使い切る
