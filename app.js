@@ -692,9 +692,10 @@ const backBtn = $('#back');
 //   新しく開く = リンク・用語・行を押した／go() を呼んだ。それ以外の画面の切り替え（戻るボタン・ブラウザの戻る/進む）は戻る扱い
 const scrollMemo = new Map();   // 画面（#/…）ごとに、離れたときの縦の位置
 let newNavAt = -1e9;
+let navIsBack = false;          // いま作る画面が「戻ってきた」ものか（中で流れる面＝ガイドが、離れたときの位置へ戻すのに使う）
 try { history.scrollRestoration = 'manual'; } catch (_) { /* 古いブラウザは無視 */ }
 document.addEventListener('click', e => { if (e.target.closest('a[href^="#/"]')) newNavAt = performance.now(); }, true);
-function go(hash) { newNavAt = performance.now(); if (location.hash === hash) render(); else location.hash = hash; }
+function go(hash) { newNavAt = performance.now(); navIsBack = false; if (location.hash === hash) render(); else location.hash = hash; }
 backBtn.addEventListener('click', () => {
   if (!stack.length) return;
   suppressPush = true;
@@ -708,6 +709,7 @@ addEventListener('hashchange', () => {
   if (!suppressPush && currentHash && currentHash !== h) stack.push(currentHash);
   suppressPush = false;
   currentHash = h;
+  navIsBack = !isNew;
   render(false, isNew ? 0 : (scrollMemo.get(h) || 0));
 });
 
@@ -954,15 +956,88 @@ function legendBox() {
   return el('div', { class: 'legend' }, Object.entries(LEGEND).map(([k, v]) => el('span', null, stChip(k), ' ', v)));
 }
 
+// 枠より広い表・図を、掴んで横に動かせるようにする。戻り値＝片付け（画面を離れるときに呼ぶ）
 function dragScroll(box, hint) {
-  let down = false, sx = 0, sl = 0;
+  let down = false, moved = false, sx = 0, sl = 0;
   const check = () => { const over = box.scrollWidth - box.clientWidth > 2; box.classList.toggle('grab', over); hint.style.display = over ? 'block' : 'none'; };
-  box.addEventListener('pointerdown', e => { if (!box.classList.contains('grab') || e.button !== 0) return; down = true; sx = e.clientX; sl = box.scrollLeft; box.classList.add('grabbing'); });
-  addEventListener('pointermove', e => { if (down) box.scrollLeft = sl - (e.clientX - sx); });
-  addEventListener('pointerup', () => { down = false; box.classList.remove('grabbing'); });
+  box.addEventListener('pointerdown', e => { if (!box.classList.contains('grab') || e.button !== 0) return; down = true; moved = false; sx = e.clientX; sl = box.scrollLeft; });
+  const move = e => {
+    if (!down) return;
+    const dx = e.clientX - sx;
+    if (Math.abs(dx) > 4) { moved = true; box.classList.add('grabbing'); }
+    box.scrollLeft = sl - dx;
+  };
+  const up = () => { down = false; box.classList.remove('grabbing'); };
+  // 掴んで動かした後の「押した」は無視する（図の箱や表の行へ飛ばない）
+  box.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', up);
   addEventListener('resize', check);
   requestAnimationFrame(check);
   setTimeout(check, 50);
+  return () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('resize', check); };
+}
+
+// 利用ガイドの図の枠（ナレッジ principles_html_document_layout §4）: 枠より広いときは掴んで横に動かせる・
+// 「画面いっぱいで見る」で拡大できる。onPick＝図の中の章の箱を押したとき（拡大中でも章へ飛べる）
+function guideFig(svg, onPick) {
+  const wrap = el('div', { class: 'gd-mapwrap' }, svg);
+  const hint = el('span', { class: 'drag-hint gd-fig-hint', text: '⇔ 図を掴んで横に動かせます' });
+  const zoom = el('button', { type: 'button', class: 'gd-fig-zoom', text: '⤢ 画面いっぱいで見る' });
+  zoom.addEventListener('click', () => openFigOverlay(svg, onPick));
+  viewCleanups.push(dragScroll(wrap, hint));
+  return el('div', { class: 'gd-fig' }, wrap, el('div', { class: 'gd-fig-bar' }, hint, zoom));
+}
+
+// 図を画面いっぱいで見る。🔴 複製はクラスを外さない（外すと装飾が消えて見た目が変わる）。効かせたくない最小幅だけを上書きする
+function openFigOverlay(svg, onPick) {
+  const vb = svg.viewBox.baseVal, vw = vb.width, vh = vb.height;
+  const clone = svg.cloneNode(true);
+  // 図の中の印（矢印の marker）の名前を付け替え、元の図の印と重ならないようにする
+  for (const n of clone.querySelectorAll('[id]')) {
+    const o = n.id; n.id = o + '-z';
+    for (const m of clone.querySelectorAll('[marker-end],[marker-start],[marker-mid]')) {
+      for (const a of ['marker-end', 'marker-start', 'marker-mid']) {
+        const v = m.getAttribute(a);
+        if (v === `url(#${o})`) m.setAttribute(a, `url(#${o}-z)`);
+      }
+    }
+  }
+  clone.style.minWidth = '0';
+  const stage = el('div', { class: 'gd-ovl-stage' }, clone);
+  const pct = el('span', { class: 'gd-ovl-pct' });
+  let scale = 1;
+  const apply = () => { clone.style.width = Math.round(vw * scale) + 'px'; clone.style.height = Math.round(vh * scale) + 'px'; pct.textContent = Math.round(scale * 100) + '%'; };
+  const fit = () => { scale = Math.max(0.2, Math.min((stage.clientWidth - 32) / vw, (stage.clientHeight - 32) / vh)); apply(); };
+  const btn = (text, f, title) => { const b = el('button', { type: 'button', class: 'gd-ovl-btn', text, title: title || text }); b.addEventListener('click', f); return b; };
+  const label = svg.getAttribute('aria-label') || '図';
+  const prevOverflow = document.body.style.overflow;
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  const ov = el('div', { class: 'gd-ovl', role: 'dialog', 'aria-modal': 'true', 'aria-label': label },
+    el('div', { class: 'gd-ovl-bar' },
+      el('b', { class: 'gd-ovl-ttl', text: label }),
+      btn('画面に合わせる', fit),
+      btn('−', () => { scale = Math.max(0.2, scale / 1.25); apply(); }, '小さく'),
+      pct,
+      btn('＋', () => { scale = Math.min(6, scale * 1.25); apply(); }, '大きく'),
+      btn('✕ 閉じる', () => close(), '閉じる（Esc）')),
+    stage);
+  function close() {
+    ov.remove(); document.body.style.overflow = prevOverflow;
+    removeEventListener('keydown', onKey); removeEventListener('resize', fit); stopDrag();
+  }
+  stage.addEventListener('click', e => {
+    const g = e.target.closest('.gm-hit');
+    if (g && g.dataset.ch && onPick) { close(); onPick(g.dataset.ch); }
+  });
+  const stopDrag = dragScroll(stage, el('span'));
+  document.body.style.overflow = 'hidden';
+  document.body.append(ov);
+  addEventListener('keydown', onKey);
+  addEventListener('resize', fit);
+  viewCleanups.push(close);   // 拡大したまま別の画面へ移っても残さない
+  fit();
+  ov.querySelector('.gd-ovl-btn').focus();
 }
 
 // ---------- 表の見出しを画面上端に残す（④MDナレッジ「一年の型」と同じ型） ----------
@@ -1462,7 +1537,338 @@ function viewSysmap() {
   ];
 }
 
+// ---------- 利用ガイドの図（全体地図・出口の分かれ道） ----------
+// 🔴 図は画面側で描く（原本 guide.json は本文だけを持つ。章が増えても図は壊れない）
+// 押すと章へ飛ぶ。色は画面の配色（CSS 変数）に合わせ、暗い配色でも読める
+function gEl(tag, attrs, ...kids) {
+  const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (v != null) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c) n.append(c);
+  return n;
+}
+function gText(x, y, t, cls) { const n = gEl('text', { x, y, class: cls || '' }); n.textContent = t; return n; }
+
+// 第1部＝4つの動きの輪／第2部＝社内の手順の流れ。chId は飛び先（無ければ押せない）
+function guideMapSvg(chapters) {
+  const find = kw => (chapters.find(c => c.title.includes(kw)) || {}).id;
+  const ring = [
+    { t: '指示する', s: '4つを渡す', kw: '指示する' },
+    { t: '囲う', s: 'どこまで動くか', kw: '囲う' },
+    { t: '受け取る', s: '出口は3つ', kw: '受け取る ─ 出口' },
+    { t: '育てる', s: '地力が上がる', kw: '育てる' },
+  ];
+  const steps = [
+    { t: '標準の手順', kw: '実装の標準手順' },
+    { t: '画面で一緒に', kw: '画面で一緒に' },
+    { t: 'ログイン', kw: 'ログインと本人確認' },
+    { t: 'GitHub編', kw: 'GitHub編' },
+    { t: 'GAS編', kw: 'GAS編' },
+    { t: '困ったとき', kw: '困ったとき' },
+  ];
+  const svg = gEl('svg', { viewBox: '0 0 880 300', class: 'gd-map', role: 'img', 'aria-label': 'ガイドの全体地図' });
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  svg.append(gText(14, 24, '第1部　使い方の姿勢 ─ この4つをくり返す', 'gm-h'));
+  const bw = 178, bh = 74, y0 = 40;
+  ring.forEach((r, i) => {
+    const x = 14 + i * (bw + 22);
+    const id = find(r.kw);
+    const g = gEl('g', { class: 'gm-box' + (id ? ' gm-hit' : ''), 'data-ch': id || '' });
+    g.append(gEl('rect', { x, y: y0, width: bw, height: bh, rx: 12, class: 'gm-r' }));
+    g.append(gText(x + bw / 2, y0 + 31, r.t, 'gm-t'));
+    g.append(gText(x + bw / 2, y0 + 53, r.s, 'gm-s'));
+    svg.append(g);
+    if (i < 3) svg.append(gEl('line', { x1: x + bw + 3, y1: y0 + bh / 2, x2: x + bw + 18, y2: y0 + bh / 2, class: 'gm-l', 'marker-end': 'url(#gmk)' }));
+  });
+  // 「育てる」から「指示する」へ戻る輪
+  svg.append(gEl('path', { d: `M ${14 + 3 * (bw + 22) + bw / 2} ${y0 + bh + 4} v 16 H ${14 + bw / 2} v -16`, class: 'gm-l gm-loop', 'marker-end': 'url(#gmk)' }));
+  svg.append(gText(440, y0 + bh + 34, '一周ごとに、次の指示が一段上がる', 'gm-s'));
+
+  svg.append(gText(14, 196, '第2部　社内の手順 ─ 作るときはこの順に', 'gm-h'));
+  const sw = 132, sh = 54, y1 = 212;
+  steps.forEach((r, i) => {
+    const x = 14 + i * (sw + 12);
+    const id = find(r.kw);
+    const g = gEl('g', { class: 'gm-box gm-box2' + (id ? ' gm-hit' : ''), 'data-ch': id || '' });
+    g.append(gEl('rect', { x, y: y1, width: sw, height: sh, rx: 10, class: 'gm-r gm-r2' }));
+    g.append(gText(x + sw / 2, y1 + 32, r.t, 'gm-t2'));
+    svg.append(g);
+    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + sw + 1, y1: y1 + sh / 2, x2: x + sw + 9, y2: y1 + sh / 2, class: 'gm-l', 'marker-end': 'url(#gmk)' }));
+  });
+  return svg;
+}
+
+// 共通: 矢印の印を、その図の中に用意する（図ごとに独立させる。他の図の defs は参照できない）
+function gArrow(svg, id) {
+  svg.append(gEl('defs', null, gEl('marker', { id, viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  return 'url(#' + id + ')';
+}
+
+// 09章 仕組みに組み込むとき＝判定を2つに分ける／任せる段階1〜4
+function guideStageSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 300', class: 'gd-map gd-stage', role: 'img', 'aria-label': '判定の分け方と、任せる段階' });
+  const ar = gArrow(svg, 'gmk-stage');
+  svg.append(gText(14, 22, '判定を2つに分ける ─ 書けるものはプログラム、書けない機微はAIの案', 'gm-h'));
+  const boxes = [
+    { x: 14, w: 412, t: '機械で書ける判定', s: '規程内か／合計は合うか／上限を超えていないか', u: 'プログラムで書く（人がいなくても通してよい）', cls: 'gm-ok' },
+    { x: 454, w: 412, t: '機械では書けない機微', s: '趣旨に合うか／どの部署か／失礼でないか', u: 'AIが案を出す → 必ず人が確かめてから実行へ', cls: 'gm-q' },
+  ];
+  boxes.forEach(b => {
+    svg.append(gEl('rect', { x: b.x, y: 40, width: b.w, height: 96, rx: 14, class: 'gm-r ' + b.cls }));
+    svg.append(gText(b.x + b.w / 2, 68, b.t, 'gm-t'));
+    svg.append(gText(b.x + b.w / 2, 92, b.s, 'gm-s'));
+    svg.append(gText(b.x + b.w / 2, 118, b.u, 'gm-t3'));
+  });
+  svg.append(gText(14, 166, '任せる段階（上に進んでよいのは、書ける判定をプログラムに移せたときだけ）', 'gm-h gm-left'));
+  const st = [
+    { n: '1', t: '要約する・整える', p: '読んで承認' },
+    { n: '2', t: '案を作る', p: '案を確かめて確定' },
+    { n: '3', t: '機微に判定案', p: '確かめて決める' },
+    { n: '4', t: '全工程で判定案', p: '異常時の対応と確認' },
+  ];
+  const w = 200, h = 66, y = 180;
+  st.forEach((x, i) => {
+    const bx = 14 + i * (w + 18);
+    svg.append(gEl('rect', { x: bx, y, width: w, height: h, rx: 12, class: 'gm-r' }));
+    svg.append(gEl('circle', { cx: bx + 24, cy: y + 24, r: 13, class: 'gm-badge gm-b1' }));
+    svg.append(gText(bx + 24, y + 29, x.n, 'gm-tag'));
+    svg.append(gText(bx + 46, y + 29, x.t, 'gm-t2 gm-left'));
+    svg.append(gText(bx + 14, y + 52, '人：' + x.p, 'gm-s gm-left'));
+    if (i < 3) svg.append(gEl('line', { x1: bx + w + 2, y1: y + h / 2, x2: bx + w + 14, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+  });
+  svg.append(gText(14, 278, '越えてはいけない線 ─ AIの判定案を、確かめずに実行へ流さない。書き込む権限も渡さない', 'gm-t3 gm-left'));
+  return svg;
+}
+
+// 11章 実装の標準手順（8段）
+function guideStepsSvg() {
+  const steps = ['判定の仕方を決める', '目的と完成の形', '全体の地図', '置き場と守り', '小さく作って確かめる', '反映前の4点', '画面で一緒に進める', '記録に残す'];
+  const svg = gEl('svg', { viewBox: '0 0 880 220', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順' });
+  const ar = gArrow(svg, 'gmk-steps');
+  svg.append(gText(14, 22, '作るときは、この順に進む（飛ばすと、あとで戻ることになる）', 'gm-h'));
+  const w = 196, h = 56;
+  steps.forEach((t, i) => {
+    const col = i % 4, row = Math.floor(i / 4);
+    const x = 14 + col * (w + 20), y = 44 + row * 80;
+    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-q' : '') }));
+    svg.append(gEl('circle', { cx: x + 22, cy: y + 28, r: 13, class: 'gm-badge gm-b2' }));
+    svg.append(gText(x + 22, y + 33, String(i + 1), 'gm-tag'));
+    svg.append(gText(x + 44, y + 33, t, 'gm-t2 gm-left'));
+    if (col < 3) svg.append(gEl('line', { x1: x + w + 2, y1: y + h / 2, x2: x + w + 16, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+  });
+  svg.append(gEl('path', { d: 'M 842 100 v 12 H 112 v 8', class: 'gm-l', 'marker-end': ar, fill: 'none' }));
+  svg.append(gText(14, 206, '反映前の4点＝合格の条件／バックアップ／元に戻す手順／作業してよい時間帯', 'gm-s gm-left'));
+  return svg;
+}
+
+// 13章 ログインと本人確認＝本物と偽物の見分け
+function guideLoginSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 230', class: 'gd-map gd-login', role: 'img', 'aria-label': '本物のログインと偽物の見分け方' });
+  svg.append(gText(14, 22, 'パスワードを入れてよいのは、アドレスが accounts.google.com のときだけ', 'gm-h'));
+  const cards = [
+    { x: 14, cls: 'gm-ok', tag: '○', t: '本物', ss: ['Google の窓が別に開く', 'アドレスは accounts.google.com', 'ふだんはアカウントを選ぶだけ'] },
+    { x: 454, cls: 'gm-ng', tag: '×', t: '偽物', ss: ['アプリの画面の中に入力欄が出る', 'アドレスが別（社内の画面のまま）', '社内のシステムはパスワードを聞かない'] },
+  ];
+  cards.forEach(c => {
+    svg.append(gEl('rect', { x: c.x, y: 40, width: 412, height: 120, rx: 14, class: 'gm-r ' + c.cls }));
+    svg.append(gEl('circle', { cx: c.x + 36, cy: 70, r: 17, class: 'gm-badge ' + c.cls }));
+    svg.append(gText(c.x + 36, 77, c.tag, 'gm-tag'));
+    svg.append(gText(c.x + 64, 77, c.t, 'gm-t gm-left'));
+    c.ss.forEach((s, i) => svg.append(gText(c.x + 24, 104 + i * 20, '・' + s, 'gm-s gm-left')));
+  });
+  svg.append(gText(14, 190, '2段階認証（いちばん強いのはパスキー）を入れると、パスワードが漏れても他人は入れない', 'gm-t3 gm-left'));
+  svg.append(gText(14, 212, 'パスワードやワンタイムの番号を、AIエージェントに渡さない。押すのは人', 'gm-s gm-left'));
+  return svg;
+}
+
+// 16章 困ったとき＝止める→戻す→伝える→直す→残す
+function guideRecoverSvg() {
+  const steps = [
+    { t: '止める', s: 'これ以上配らない' },
+    { t: '戻す', s: '直前の版に' },
+    { t: '伝える', s: '誰が・いつ・何を' },
+    { t: '直す', s: '原因が分かってから' },
+    { t: '残す', s: '記録に1行' },
+  ];
+  const svg = gEl('svg', { viewBox: '0 0 880 170', class: 'gd-map gd-recover', role: 'img', 'aria-label': '壊れたときの順番' });
+  const ar = gArrow(svg, 'gmk-rec');
+  svg.append(gText(14, 22, '壊れたと思ったら、この順。原因探しは後', 'gm-h'));
+  const w = 152, h = 70, y = 44;
+  steps.forEach((st, i) => {
+    const x = 14 + i * (w + 22);
+    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-ng' : '') }));
+    svg.append(gText(x + w / 2, y + 32, st.t, 'gm-t'));
+    svg.append(gText(x + w / 2, y + 54, st.s, 'gm-s'));
+    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + w + 3, y1: y + h / 2, x2: x + w + 18, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+  });
+  svg.append(gText(14, 148, 'すぐ相談 ─ 鍵が漏れたかも／身に覚えのない更新がある／偽の画面にパスワードを入れた', 'gm-t3 gm-left'));
+  return svg;
+}
+
+// 03章 地力＝3つの重なり。重なった所＝判定できる＝AIの間違いを指摘できる
+// 🔴 円の中に置く文字（各輪の名前・中心の言葉）と、円の外に置く文字（題・右の説明・下の注記）を分ける。
+//    円の外の文字は、円の外接枠に入らない位置だけに置く（2026-09-21 PO「説明や表題と被らない」）
+function guideJirikiSvg() {
+  const W = 880, H = 470;
+  const svg = gEl('svg', { viewBox: `0 0 ${W} ${H}`, class: 'gd-map gd-jiriki', role: 'img', 'aria-label': '地力の3つの輪。重なりが、AIの間違いを指摘できる状態' });
+  svg.append(gText(14, 26, '3つが重なったところ ＝ 判定できる ＝ AIの間違いを指摘できる', 'gm-h gm-left'));
+
+  // 輪は大きく。外接枠: x 40〜436・y 58〜434（題 y≦32、注記 y≧452 と交わらない）
+  const cx = 238, cy = 250, r = 122;
+  const circles = [
+    { x: cx, y: cy - 70, cls: 'gm-c1', lobe: '① 知る', lx: cx, ly: cy - 70 - 66 },
+    { x: cx - 80, y: cy + 46, cls: 'gm-c2', lobe: '② 読める', lx: cx - 80 - 58, ly: cy + 46 + 62 },
+    { x: cx + 80, y: cy + 46, cls: 'gm-c3', lobe: '③ 決められる', lx: cx + 80 + 58, ly: cy + 46 + 62 },
+  ];
+  circles.forEach(c => svg.append(gEl('circle', { cx: c.x, cy: c.y, r, class: 'gm-ring ' + c.cls })));
+  circles.forEach(c => svg.append(gText(c.lx, c.ly, c.lobe, 'gm-lobe')));
+
+  // 中心＝3つの円の重心。白い札の上に言葉を置き、輪の色に埋もれないようにする
+  const gx = (circles[0].x + circles[1].x + circles[2].x) / 3;
+  const gy = (circles[0].y + circles[1].y + circles[2].y) / 3;
+  svg.append(gEl('rect', { x: gx - 86, y: gy - 30, width: 172, height: 60, rx: 12, class: 'gm-core' }));
+  svg.append(gText(gx, gy - 6, '判定できる', 'gm-core-t'));
+  svg.append(gText(gx, gy + 17, '間違いを指摘できる', 'gm-core-s'));
+
+  // 右の説明（円の外接枠 x≦436 より右、x≧470 に置く）
+  const notes = [
+    { cls: 'gm-b1', t: '① AIを正しく知る', s: '次の言葉を予測する計算機。鵜呑みにしない' },
+    { cls: 'gm-b2', t: '② 読んで理解する', s: '出てきたものを、自分の言葉で言い直せる' },
+    { cls: 'gm-b3', t: '③ 自分で決める', s: '手綱を離さない。正しいか・最良かで止まれる' },
+  ];
+  notes.forEach((n, i) => {
+    const y = 96 + i * 104;
+    svg.append(gEl('rect', { x: 470, y, width: 396, height: 80, rx: 14, class: 'gm-r' }));
+    svg.append(gEl('circle', { cx: 498, cy: y + 40, r: 16, class: 'gm-badge ' + n.cls }));
+    svg.append(gText(498, y + 46, String(i + 1), 'gm-tag'));
+    svg.append(gText(526, y + 34, n.t, 'gm-t2 gm-left'));
+    svg.append(gText(526, y + 58, n.s, 'gm-s gm-left'));
+  });
+
+  // 下の注記（外接枠の下 y≧452）
+  svg.append(gText(14, 458, '1つでも欠けると、その分だけ「気づけない間違い」が、そのまま成果物に乗る', 'gm-s gm-left'));
+  return svg;
+}
+
+// 07章 囲う＝読む→書く→実行。実行の前に人が立つ
+function guideHarnessSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-harness', role: 'img', 'aria-label': '触ってよい範囲と、止まって聞く線' });
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk3', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  svg.append(gText(14, 22, '触ってよい範囲は、狭い方から広げる。外に出る操作の前で必ず止まる', 'gm-h'));
+  const steps = [
+    { t: '読む', s: '見るだけ。まずここから', cls: 'gm-ok' },
+    { t: '書く', s: '下書き・作業用の場所に', cls: 'gm-ok' },
+    { t: '実行', s: '送信・公開・削除・支払い', cls: 'gm-ng' },
+  ];
+  const w = 210, h = 92, y = 52;
+  steps.forEach((st, i) => {
+    const x = 14 + i * (w + 56);
+    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 14, class: 'gm-r ' + st.cls }));
+    svg.append(gText(x + w / 2, y + 40, st.t, 'gm-t'));
+    svg.append(gText(x + w / 2, y + 64, st.s, 'gm-s'));
+    if (i < 2) svg.append(gEl('line', { x1: x + w + 8, y1: y + h / 2, x2: x + w + 44, y2: y + h / 2, class: 'gm-l', 'marker-end': 'url(#gmk3)' }));
+  });
+  // 実行の手前に「人が押す」線
+  const gx = 14 + 2 * (w + 56) - 28;
+  svg.append(gEl('line', { x1: gx, y1: y - 12, x2: gx, y2: y + h + 34, class: 'gm-gate' }));
+  svg.append(gText(gx, y + h + 52, 'ここで必ず止まる', 'gm-t3'));
+  svg.append(gText(gx, y + h + 70, '押すのは人', 'gm-s'));
+  svg.append(gText(14, y + h + 52, 'AIに任せてよい範囲', 'gm-s gm-left'));
+  svg.append(gEl('line', { x1: 14, y1: y + h + 20, x2: gx - 10, y2: y + h + 20, class: 'gm-l gm-span' }));
+  return svg;
+}
+
+// 06章 指示する＝渡す4つ（弱い指示→部下に渡す形）
+function guideOrderSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 240', class: 'gd-map gd-order', role: 'img', 'aria-label': '指示に渡す4つ' });
+  svg.append(gText(14, 22, '指示に4つを渡すと、AIが勝手に埋める余地が減る', 'gm-h'));
+  const items = [
+    { t: '何のために', s: '目的' },
+    { t: '誰のために・どこで', s: '文脈' },
+    { t: 'してはいけないこと', s: '制約' },
+    { t: 'どうなったら終わりか', s: '完了の条件' },
+  ];
+  const w = 196, h = 76, y = 46;
+  items.forEach((it, i) => {
+    const x = 14 + i * (w + 20);
+    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r gm-q' }));
+    svg.append(gText(x + w / 2, y + 32, it.t, 'gm-t2'));
+    svg.append(gText(x + w / 2, y + 54, it.s, 'gm-s'));
+  });
+  svg.append(gEl('rect', { x: 14, y: 146, width: 852, height: 46, rx: 10, class: 'gm-r' }));
+  svg.append(gText(440, y + 129, 'そして必ず1行 ─ 「分からなければ、埋めずに聞いて」', 'gm-t3'));
+  svg.append(gText(14, 216, '渡さないと、AIは「会社のこと・今日の事実・良い仕事の基準」を、もっともらしく埋める', 'gm-s gm-left'));
+  return svg;
+}
+
+// 「足し算と掛け算」の図＝1年後に手元に残るもの（仮の数字でイメージを示す）
+// 数字は考え方を示すための仮置き。地力が一定（目安2.4）を下回ると、掛け算は赤字になる
+function guideGainSvg() {
+  const rows = [
+    { t: '地力 5 × 足し算', s: '調べる・要約する', v: 255, neg: false },
+    { t: '地力 5 × 掛け算', s: '仕組みにする', v: 2250, neg: false },
+    { t: '地力 2 × 掛け算', s: '判定できないまま自動化', v: -240, neg: true },
+    { t: '地力 8 × 掛け算', s: '判定できる人が仕組みにする', v: 6360, neg: false },
+  ];
+  const W = 880, zero = 300, scale = 0.083, rowH = 56, top = 46;
+  const svg = gEl('svg', { viewBox: `0 0 ${W} ${top + rows.length * rowH + 44}`, class: 'gd-map gd-gain', role: 'img', 'aria-label': '1年後に手元に残るもの（仮の数字）' });
+  svg.append(gText(14, 22, '1年後に手元に残るもの（仮の数字でイメージ）', 'gm-h'));
+  // ゼロの線
+  svg.append(gEl('line', { x1: zero, y1: top - 8, x2: zero, y2: top + rows.length * rowH - 6, class: 'gm-zero' }));
+  svg.append(gText(zero, top - 14, '0', 'gm-s'));
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const w = Math.abs(r.v) * scale;
+    const x = r.neg ? zero - w : zero;
+    svg.append(gText(14, y + 15, r.t, 'gm-t2 gm-left'));
+    svg.append(gText(14, y + 35, r.s, 'gm-s gm-left'));
+    svg.append(gEl('rect', { x, y: y + 8, width: Math.max(w, 3), height: 26, rx: 6, class: 'gm-bar ' + (r.neg ? 'gm-bar-neg' : 'gm-bar-pos') }));
+    const lx = r.neg ? x - 8 : x + w + 8;
+    const lab = gText(lx, y + 26, (r.v > 0 ? '+' : '') + r.v.toLocaleString('ja-JP'), 'gm-t2 ' + (r.neg ? '' : 'gm-left'));
+    if (r.neg) lab.setAttribute('class', 'gm-t2 gm-right');
+    svg.append(lab);
+  });
+  const yb = top + rows.length * rowH + 16;
+  svg.append(gText(14, yb, '地力が目安 2.4 を下回ると、掛け算は赤字になる（間違いも一緒に量産されるため）', 'gm-s gm-left'));
+  svg.append(gText(14, yb + 18, '足し算も、確かめずに通せばマイナスになる。掛け算は、それが毎日・全員ぶん続く', 'gm-s gm-left'));
+  return svg;
+}
+
+// 「この1枚で分かること」の図＝仕事が返ってきた後の分かれ道（出口A/B/C）
+function guideExitSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-exit', role: 'img', 'aria-label': '受け取り方の分かれ道' });
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk2', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  svg.append(gEl('rect', { x: 14, y: 96, width: 150, height: 58, rx: 10, class: 'gm-r' }));
+  svg.append(gText(89, 121, 'AIから', 'gm-t'));
+  svg.append(gText(89, 142, '仕事が返る', 'gm-t'));
+  svg.append(gEl('rect', { x: 196, y: 84, width: 208, height: 82, rx: 14, class: 'gm-r gm-q' }));
+  svg.append(gText(300, 112, 'これが間違っていたら、', 'gm-t3'));
+  svg.append(gText(300, 134, '誰が気づく？', 'gm-t3'));
+  svg.append(gText(300, 152, '（10秒で決まる）', 'gm-s'));
+  svg.append(gEl('line', { x1: 168, y1: 125, x2: 192, y2: 125, class: 'gm-l', 'marker-end': 'url(#gmk2)' }));
+  const outs = [
+    { y: 14, tag: 'A', t: '確かめて使う', s: '出典・実物・動くかを見る', cls: 'gm-ok' },
+    { y: 96, tag: 'B', t: '自分で決める', s: '決めた理由を自分の言葉で言える', cls: 'gm-ok' },
+    { y: 178, tag: 'C', t: 'そのまま通す', s: '禁止。ここが依存の入口', cls: 'gm-ng' },
+  ];
+  const labels = ['「私が気づく」', '「私の責任」', '「誰も気づかない」'];
+  outs.forEach((o, i) => {
+    svg.append(gEl('path', { d: `M 404 125 C 446 125, 446 ${o.y + 29}, 482 ${o.y + 29}`, class: 'gm-l', fill: 'none', 'marker-end': 'url(#gmk2)' }));
+    svg.append(gText(440, o.y + (i === 1 ? 20 : 22), labels[i], 'gm-s gm-lab'));
+    svg.append(gEl('rect', { x: 504, y: o.y, width: 362, height: 58, rx: 12, class: 'gm-r ' + o.cls }));
+    svg.append(gEl('circle', { cx: 504, cy: o.y + 29, r: 17, class: 'gm-badge ' + o.cls }));
+    svg.append(gText(504, o.y + 35, o.tag, 'gm-tag'));
+    svg.append(gText(534, o.y + 26, o.t, 'gm-t gm-left'));
+    svg.append(gText(534, o.y + 45, o.s, 'gm-s gm-left'));
+  });
+  return svg;
+}
+
 // ---------- AIエージェント利用ガイド ----------
+const guideMemo = { top: null, hops: [] };   // ガイドを離れたときの位置と戻り道（戻ってきたら元に戻す）
 function viewGuide(anchor) {
   const G = DATA.guide;
   const chapters = G.chapters;
@@ -1475,22 +1881,52 @@ function viewGuide(anchor) {
           el('span', { class: 'gd-toc-n', text: c.no }), el('span', { text: c.title }))),
     ]));
 
+  const pick = id => hopTo(id);   // 図の中の章の箱を押したとき（hopTo は下で作る。押された時点では出来ている）
+  // 章の図は画面側で描く（原本は本文だけを持つ）。題名で対応づける
+  const CH_FIG = [
+    { kw: '足し算と掛け算', make: guideGainSvg },
+    { kw: '地力とは何か', make: guideJirikiSvg },
+    { kw: '指示する ─ 部下に渡す4つ', make: guideOrderSvg },
+    { kw: '囲う', make: guideHarnessSvg },
+    { kw: '仕組みに組み込むとき', make: guideStageSvg },
+    { kw: '実装の標準手順', make: guideStepsSvg },
+    { kw: 'ログインと本人確認', make: guideLoginSvg },
+    { kw: '困ったとき', make: guideRecoverSvg },
+  ];
   const secs = chapters.map(c => {
     const body = el('div', { class: 'gd-body' });
     body.innerHTML = c.html;               // 作成時に無害化済みの HTML だけがここに来る
+    const fig = CH_FIG.find(f => c.title.includes(f.kw));
     return el('section', { class: 'gd-sec', id: 'gd-' + c.id },
       el('h2', { class: 'gd-h2' }, el('span', { class: 'gd-n', text: c.no }), el('span', { text: c.title })),
       c.lead ? el('p', { class: 'gd-lead', text: c.lead }) : null,
       body,
+      fig ? guideFig(fig.make(), pick) : null,
       el('a', { class: 'gd-top', href: '#/guide', text: '↑ もくじへ' }));
   });
 
+  const mapBox = el('div', { class: 'gd-mapbox' },
+    el('span', { class: 'gd-intro-h', text: 'このガイドの全体地図' }),
+    guideFig(guideMapSvg(chapters), pick),
+    el('p', { class: 'gd-note', text: '図の箱を押すと、その章へ飛びます。' }));
+
   const main = el('div', { class: 'gd-main' },
+    mapBox,
     el('div', { class: 'gd-intro' },
       el('span', { class: 'gd-intro-h', text: G.intro.head }),
-      el('ul', { class: 'gd-intro-l' }, ...G.intro.points.map(t => { const li = el('li'); li.innerHTML = t; return li; })),
-      el('table', { class: 'gd-t gd-check' }, el('tbody', null,
-        ...G.intro.check.map(([q, a]) => el('tr', null, el('td', null, el('b', { text: q })), el('td', { text: a })))))),
+      // 要点は1枚ずつのカードで見せる（箇条書きだと重さが伝わらない・2026-09-21 PO）。
+      // 見出し＝最初の一文、その後ろを補足に回す。原本の文をそのまま使うので、章が増えても崩れない
+      el('div', { class: 'gd-cards' }, ...G.intro.points.map((t, i) => {
+        const cut = t.indexOf('。');
+        const head = cut > 0 ? t.slice(0, cut + 1) : t;
+        const rest = cut > 0 ? t.slice(cut + 1) : '';
+        const h = el('p', { class: 'gd-card-h' }); h.innerHTML = head;
+        const kids = [el('span', { class: 'gd-card-n', text: String(i + 1) }), h];
+        if (rest.trim()) { const d = el('p', { class: 'gd-card-d' }); d.innerHTML = rest; kids.push(d); }
+        return el('div', { class: 'gd-card' }, ...kids);
+      })),
+      guideFig(guideExitSvg(), pick),
+      el('p', { class: 'gd-note', text: '受け取り方は、この1つの問いで決まります。A と B は使ってよい。C は止めます。' })),
     ...secs,
     el('div', { class: 'gd-contact' },
       el('span', { class: 'gd-intro-h', text: G.contact.head }),
@@ -1500,7 +1936,7 @@ function viewGuide(anchor) {
     el('p', { class: 'gd-src', text: G.source }));
 
   // 本文は、この面の中だけを流す（サイドを隠した別ページ。もくじは面の中に留まる）
-  const page = el('div', { class: 'gd-page' }, el('div', { class: 'gd-wrap' }, main, toc));
+  const page = el('div', { class: 'gd-page' }, el('div', { class: 'gd-wrap' }, toc, main));
 
   // 読んでいる章を、もくじで光らせる
   // 位置から選ぶ（面の上から1/3の線を越えた最後の章）。見張りの仕掛けに頼らないので、どの環境でも同じに動く
@@ -1515,6 +1951,11 @@ function viewGuide(anchor) {
     if (id === cur) return;
     cur = id;
     for (const a of toc.querySelectorAll('.gd-toc-a')) a.classList.toggle('on', a.dataset.ch === id);
+    // 狭い画面（もくじが上のチップ列）では、光っているチップが見える所まで列を送る
+    const on = toc.querySelector('.gd-toc-a.on');
+    if (on && getComputedStyle(toc).display === 'flex') toc.scrollLeft = on.offsetLeft - 12;
+    // アドレスも読んでいる章に合わせる（開き直したとき・人に送ったときに同じ章が出る）。履歴は増やさない
+    if ((location.hash || '').startsWith('#/guide')) history.replaceState(null, '', hashFor());
   };
   // 間引きはタイマーで行う（画面が隠れている間も同じ動きになる。描画待ちの仕掛けは止まることがある）
   let tick = 0;
@@ -1522,7 +1963,22 @@ function viewGuide(anchor) {
   page.addEventListener('scroll', onScroll, { passive: true });
   addEventListener('resize', onScroll);
 
+  // 飛んだら戻れる（ナレッジ principles_html_document_layout §3。2026-09-21 PO「ガイド内に一つ前に戻るが無い」）
+  //   もくじ・全体地図の箱・「もくじへ」・本文の章リンクで飛ぶ前の位置を積み、左上のボタンで1つずつ戻す。
+  //   積んだ位置が無くなったら、前の画面（無ければ辞書）へ戻る。行き先はボタンの文字で示す
+  const back = el('button', { type: 'button', class: 'fp-back' });
+  const hops = [];
+  const setBack = () => {
+    back.textContent = hops.length ? '← ひとつ前に戻る' : (stack.length ? '← 前の画面へ戻る' : '← 辞書へ戻る');
+    back.title = hops.length ? 'ガイドの中で、飛ぶ前に読んでいた場所へ戻ります' : 'ガイドを閉じて戻ります';
+  };
+  const hashFor = () => '#/guide' + (page.scrollTop > 4 && cur ? '/' + cur : '');
   // もくじを押したときは、画面を作り直さずにその章まで流す（作り直すと位置が飛ぶ。2026-09-20 PO）
+  const scrollToY = (y, smooth) => {
+    page.scrollTo({ top: y, behavior: smooth ? 'smooth' : 'auto' });
+    setTimeout(mark, smooth ? 450 : 0);
+  };
+  const hop = y => { hops.push(page.scrollTop); setBack(); scrollToY(y, true); };
   const jump = (id, smooth) => {
     const t = document.getElementById('gd-' + id);
     if (!t) return;
@@ -1530,25 +1986,37 @@ function viewGuide(anchor) {
     history.replaceState(null, '', '#/guide/' + id);
     setTimeout(mark, smooth ? 400 : 0);
   };
+  const hopTo = id => { const t = document.getElementById('gd-' + id); if (t) hop(t.offsetTop - 8); };
   toc.addEventListener('click', e => {
     const a = e.target.closest('.gd-toc-a');
     if (!a) return;
     e.preventDefault();
-    jump(a.dataset.ch, true);
+    hopTo(a.dataset.ch);
   });
   main.addEventListener('click', e => {
-    const a = e.target.closest('.gd-top');
-    if (!a) return;
-    e.preventDefault();
-    page.scrollTo({ top: 0, behavior: 'smooth' });
-    history.replaceState(null, '', '#/guide');
+    const g = e.target.closest('.gm-hit');
+    if (g && g.dataset.ch) { hopTo(g.dataset.ch); return; }
+    const top = e.target.closest('.gd-top');
+    if (top) { e.preventDefault(); hop(0); return; }
+    const a = e.target.closest('a[href^="#/guide/"]');   // 本文の中の章リンク（画面を作り直さずに流す）
+    if (a) { e.preventDefault(); hopTo(a.getAttribute('href').replace('#/guide/', '')); }
   });
+  back.addEventListener('click', () => {
+    if (hops.length) { scrollToY(hops.pop(), true); setBack(); return; }
+    if (stack.length) backBtn.click(); else go('#/');
+  });
+  setBack();
 
-  const first = setTimeout(() => { if (anchor) jump(anchor, false); else mark(); }, 0);
-  viewCleanups.push(() => { clearTimeout(first); if (tick) clearTimeout(tick); removeEventListener('resize', onScroll); });
-
-  const back = el('button', { type: 'button', class: 'fp-back', text: '← ひとつ前に戻る' });
-  back.addEventListener('click', () => { if (stack.length) backBtn.click(); else go('#/'); });
+  // 別の画面（辞書の項目など）から戻ってきたときは、離れたときの位置と戻り道を元に戻す
+  const first = setTimeout(() => {
+    if (navIsBack && guideMemo.top != null) { page.scrollTop = guideMemo.top; hops.push(...guideMemo.hops); setBack(); mark(); }
+    else if (anchor) jump(anchor, false);
+    else mark();
+  }, 0);
+  viewCleanups.push(() => {
+    guideMemo.top = page.scrollTop; guideMemo.hops = hops.slice();
+    clearTimeout(first); if (tick) clearTimeout(tick); removeEventListener('resize', onScroll);
+  });
   return [
     el('div', { class: 'fp-bar' },
       back,

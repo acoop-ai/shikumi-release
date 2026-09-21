@@ -511,7 +511,7 @@ body.locked #side,body.locked #main,body.locked #tip{display:none}
 /* ---------- AIエージェント利用ガイド ---------- */
 .gd-page{flex:1 1 auto;min-height:0;overflow:auto;padding:18px 24px 40px}
 .gd-page h1{margin-top:0}
-.gd-wrap{display:grid;grid-template-columns:minmax(0,1fr) 252px;gap:28px;align-items:start;max-width:1180px;margin:0 auto}
+.gd-wrap{display:grid;grid-template-columns:252px minmax(0,1fr);gap:28px;align-items:start;max-width:1180px;margin:0 auto}
 .gd-toc{position:sticky;top:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 8px;max-height:calc(100dvh - 110px);overflow:auto;font-size:13px}
 .gd-toc-h{display:block;font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.06em;margin:0 6px 6px}
 .gd-toc-p{display:block;margin:10px 6px 4px;font-size:11.5px;font-weight:700;color:var(--accent)}
@@ -545,9 +545,85 @@ body.locked #side,body.locked #main,body.locked #tip{display:none}
 .gd-top{display:inline-block;margin-top:4px;font-size:12.5px;color:var(--sub);text-decoration:none}
 .gd-top:hover{color:var(--accent)}
 .gd-src{font-size:12.5px;color:var(--sub);margin:16px 0 0}
+
+/* 「この1枚で分かること」の要点カード（1項目＝1枚。見出しを大きく、補足は下に） */
+.gd-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:8px 0 16px}
+.gd-card{position:relative;border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;background:var(--panel);padding:14px 16px 14px 52px;box-shadow:var(--shadow)}
+.gd-card-n{position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.gd-card-h{margin:0;font-size:15.5px;font-weight:700;line-height:1.6}
+.gd-card-d{margin:6px 0 0;font-size:13.5px;line-height:1.75;color:var(--sub)}
+.gd-card-d b{color:var(--ink)}
+
+/* 利用ガイドの図（全体地図・出口の分かれ道） */
+.gd-mapbox{border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:10px;background:var(--panel);padding:12px 16px;margin:0 0 20px}
+.gd-mapwrap{overflow-x:auto;margin:6px 0 4px}
+svg.gd-map{display:block;width:100%;height:auto;min-width:720px}
+svg.gd-map .gm-h{font-size:13px;font-weight:700;fill:var(--accent)}
+svg.gd-map .gm-r{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+svg.gd-map .gm-r2{fill:var(--soft)}
+svg.gd-map .gm-q{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+svg.gd-map .gm-ok{fill:var(--ok-bg);stroke:var(--ok)}
+svg.gd-map .gm-ng{fill:var(--wip-bg);stroke:var(--wip)}
+svg.gd-map .gm-badge.gm-ok{fill:var(--ok);stroke:none}
+svg.gd-map .gm-badge.gm-ng{fill:var(--wip);stroke:none}
+svg.gd-map .gm-tag{font-size:16px;font-weight:700;fill:#fff;text-anchor:middle}
+svg.gd-map .gm-t{font-size:15px;font-weight:700;fill:var(--ink);text-anchor:middle}
+svg.gd-map .gm-t2{font-size:13.5px;font-weight:700;fill:var(--ink);text-anchor:middle}
+svg.gd-map .gm-t3{font-size:14px;font-weight:700;fill:var(--accent);text-anchor:middle}
+svg.gd-map .gm-s{font-size:11.5px;fill:var(--sub);text-anchor:middle}
+svg.gd-map .gm-lab{font-size:11px}
+svg.gd-map .gm-l{stroke:var(--sub);stroke-width:1.8;fill:none}
+svg.gd-map .gm-loop{stroke-dasharray:5 4}
+svg.gd-map .gm-ar{fill:var(--sub)}
+svg.gd-map .gm-ring{fill-opacity:.20;stroke-width:2.5}
+svg.gd-map .gm-lobe{font-size:17px;font-weight:700;fill:var(--ink);text-anchor:middle}
+svg.gd-map .gm-core{fill:var(--panel);stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 2px 6px rgba(0,0,0,.12))}
+svg.gd-map .gm-core-t{font-size:19px;font-weight:800;fill:var(--accent);text-anchor:middle}
+svg.gd-map .gm-core-s{font-size:13.5px;font-weight:700;fill:var(--ink);text-anchor:middle}
+svg.gd-map .gm-c1{fill:var(--accent);stroke:var(--accent)}
+svg.gd-map .gm-c2{fill:var(--ok);stroke:var(--ok)}
+svg.gd-map .gm-c3{fill:var(--wip);stroke:var(--wip)}
+svg.gd-map .gm-b1{fill:var(--accent)}
+svg.gd-map .gm-b2{fill:var(--ok)}
+svg.gd-map .gm-b3{fill:var(--wip)}
+svg.gd-map .gm-gate{stroke:var(--wip);stroke-width:2.5;stroke-dasharray:6 5}
+svg.gd-map .gm-span{stroke-dasharray:4 4}
+svg.gd-jiriki,svg.gd-harness,svg.gd-order,svg.gd-stage,svg.gd-steps,svg.gd-login,svg.gd-recover{min-width:680px}
+svg.gd-map .gm-right{text-anchor:end}
+svg.gd-map .gm-zero{stroke:var(--sub);stroke-width:1.5;stroke-dasharray:4 4}
+svg.gd-map .gm-bar-pos{fill:var(--ok);opacity:.85}
+svg.gd-map .gm-bar-neg{fill:var(--wip);opacity:.9}
+svg.gd-gain{min-width:640px}
+svg.gd-map .gm-left{text-anchor:start}
+svg.gd-map .gm-hit{cursor:pointer}
+svg.gd-map .gm-hit:hover .gm-r{stroke:var(--accent);stroke-width:2.5}
+/* 図の枠（§4）: 枠より広いときは掴んで横に動かせる／画面いっぱいで拡大 */
+.gd-mapwrap.grab{cursor:grab}
+.gd-mapwrap.grabbing{cursor:grabbing;user-select:none}
+.gd-mapwrap.grabbing svg{pointer-events:none}
+.gd-fig-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:2px 0 6px}
+.gd-fig-bar .gd-fig-hint{margin:0 auto 0 0}
+.gd-fig-zoom{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 10px;cursor:pointer;color:var(--ink);font-size:12.5px;white-space:nowrap}
+.gd-fig-zoom:hover{background:var(--soft)}
+/* 🔴 拡大の画面の飾りは、バーの中だけに当てる（図の中の text に当たると見た目が変わる。クラス名は gd-ovl- で始める） */
+.gd-ovl{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column}
+.gd-ovl .gd-ovl-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.gd-ovl .gd-ovl-bar .gd-ovl-ttl{flex:1 1 12em;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gd-ovl .gd-ovl-bar .gd-ovl-btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--ink);font-size:14px}
+.gd-ovl .gd-ovl-bar .gd-ovl-btn:hover{background:var(--soft)}
+.gd-ovl .gd-ovl-bar .gd-ovl-pct{min-width:3.6em;text-align:center;font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
+.gd-ovl .gd-ovl-stage{flex:1 1 auto;min-height:0;overflow:auto;padding:16px}
+.gd-ovl .gd-ovl-stage > svg{display:block;margin:0 auto;background:var(--panel);border-radius:10px}
+.gd-ovl .gd-ovl-stage.grab{cursor:grab}
+.gd-ovl .gd-ovl-stage.grabbing{cursor:grabbing;user-select:none}
 @media (max-width:900px){
-  .gd-wrap{grid-template-columns:1fr}
-  .gd-toc{position:static;max-height:none;order:-1;margin-bottom:14px}
+  .gd-wrap{grid-template-columns:minmax(0,1fr)}   /* 1fr だと中の図の最小幅に押されて横にはみ出す */
+  /* 狭い画面では、もくじを上のチップ列に畳む（§2）。面の上端に留め、光っているチップまで列を送る */
+  .gd-toc{position:sticky;top:-18px;z-index:5;display:flex;gap:6px;overflow-x:auto;max-height:none;
+    margin:-18px -24px 14px;padding:8px 12px;border-width:0 0 1px;border-radius:0;scrollbar-width:thin}
+  .gd-toc .gd-toc-h,.gd-toc .gd-toc-p{display:none}
+  .gd-toc .gd-toc-a{flex:0 0 auto;gap:5px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .gd-toc .gd-toc-a > span:last-child{max-width:13em;overflow:hidden;text-overflow:ellipsis}
 }
 
 /* ---------- しくみの全体図（立体）: arch3d.js と組で使う。辞書と Web 版で共通 ---------- */
