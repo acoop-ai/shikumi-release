@@ -1626,6 +1626,8 @@ function render(fromTyping, restoreY) {
   view.classList.toggle('wide', key === 'home' || key === 'sysmap' || (route === 'arch' && (!arg || arg === 'cards')));   // 図とカードは横長の画面を使い切る
   if (route === 'item') view.querySelectorAll('.body, .oneline').forEach(n => markTerms(n, decodeURIComponent(arg)));
   if (route === 'arch') view.querySelectorAll('.oneline, .a-why').forEach(n => markTerms(n, null));
+  // 利用ガイドでも用語にホバーを付ける（章ごとに数える＝同じ用語は1章に1回だけ印が付く。2026-09-21 PO）
+  if (route === 'guide') view.querySelectorAll('.gd-sec').forEach(n => markTerms(n, null));
   renderNav(key);
   if (!fromTyping) scrollTo(0, restoreY || 0);   // 戻ったときは離れたときの位置へ（中身を作り終えてから動かすので、同じ位置に戻る）
   tip.style.display = 'none';
