@@ -1566,8 +1566,10 @@ function guideMapSvg(chapters) {
     { t: '困ったとき', kw: '困ったとき' },
   ];
   const svg = gEl('svg', { viewBox: '0 0 880 300', class: 'gd-map', role: 'img', 'aria-label': 'ガイドの全体地図' });
-  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
-    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  // 上の輪（第1部）は隙間が15pxあるので流れる矢印にする。下の手順の列は隙間が8pxしかなく
+  // 流れて見えるほどの余地が無いので、静止の矢印のまま（2026-09-22 PO「ほかの図も動かせるものは」への回答）
+  const arRing = gArrowFlow(svg, 'gmk');
+  const arSteps = gArrow(svg, 'gmk-map-steps');
   svg.append(gText(14, 24, '第1部　使い方の姿勢 ─ この4つをくり返す', 'gm-h'));
   const bw = 178, bh = 74, y0 = 40;
   ring.forEach((r, i) => {
@@ -1578,10 +1580,10 @@ function guideMapSvg(chapters) {
     g.append(gText(x + bw / 2, y0 + 31, r.t, 'gm-t'));
     g.append(gText(x + bw / 2, y0 + 53, r.s, 'gm-s'));
     svg.append(g);
-    if (i < 3) svg.append(gEl('line', { x1: x + bw + 3, y1: y0 + bh / 2, x2: x + bw + 18, y2: y0 + bh / 2, class: 'gm-l', 'marker-end': 'url(#gmk)' }));
+    if (i < 3) svg.append(gEl('line', { x1: x + bw + 3, y1: y0 + bh / 2, x2: x + bw + 18, y2: y0 + bh / 2, class: 'gm-flow', 'marker-end': arRing }));
   });
   // 「育てる」から「指示する」へ戻る輪
-  svg.append(gEl('path', { d: `M ${14 + 3 * (bw + 22) + bw / 2} ${y0 + bh + 4} v 16 H ${14 + bw / 2} v -16`, class: 'gm-l gm-loop', 'marker-end': 'url(#gmk)' }));
+  svg.append(gEl('path', { d: `M ${14 + 3 * (bw + 22) + bw / 2} ${y0 + bh + 4} v 16 H ${14 + bw / 2} v -16`, class: 'gm-flow', 'marker-end': arRing }));
   svg.append(gText(440, y0 + bh + 34, '一周ごとに、次の指示が一段上がる', 'gm-s'));
 
   svg.append(gText(14, 196, '第2部　社内の手順 ─ 作るときはこの順に', 'gm-h'));
@@ -1593,7 +1595,7 @@ function guideMapSvg(chapters) {
     g.append(gEl('rect', { x, y: y1, width: sw, height: sh, rx: 10, class: 'gm-r gm-r2' }));
     g.append(gText(x + sw / 2, y1 + 32, r.t, 'gm-t2'));
     svg.append(g);
-    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + sw + 1, y1: y1 + sh / 2, x2: x + sw + 9, y2: y1 + sh / 2, class: 'gm-l', 'marker-end': 'url(#gmk)' }));
+    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + sw + 1, y1: y1 + sh / 2, x2: x + sw + 9, y2: y1 + sh / 2, class: 'gm-l', 'marker-end': arSteps }));
   });
   return svg;
 }
@@ -1605,10 +1607,18 @@ function gArrow(svg, id) {
   return 'url(#' + id + ')';
 }
 
+// 共通:「流れる」矢印用（アクセント色・固定サイズ）。16章で確立した方式を他の図にも広げる（2026-09-22 PO）。
+// markerUnits=userSpaceOnUse で矢先を絶対サイズに固定するので、.gm-flow で線を太くしても矢先だけ崩れない
+function gArrowFlow(svg, id) {
+  svg.append(gEl('defs', null, gEl('marker', { id, viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '11', markerHeight: '11', markerUnits: 'userSpaceOnUse', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar-flow' }))));
+  return 'url(#' + id + ')';
+}
+
 // 09章 仕組みに組み込むとき＝判定を2つに分ける／任せる段階1〜4
 function guideStageSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 300', class: 'gd-map gd-stage', role: 'img', 'aria-label': '判定の分け方と、任せる段階' });
-  const ar = gArrow(svg, 'gmk-stage');
+  const ar = gArrowFlow(svg, 'gmk-stage');
   svg.append(gText(14, 22, '判定を2つに分ける ─ 書けるものはプログラム、書けない機微はAIの案', 'gm-h'));
   const boxes = [
     { x: 14, w: 412, t: '機械で書ける判定', s: '規程内か／合計は合うか／上限を超えていないか', u: 'プログラムで書く（人がいなくても通してよい）', cls: 'gm-ok' },
@@ -1635,7 +1645,7 @@ function guideStageSvg() {
     svg.append(gText(bx + 24, y + 29, x.n, 'gm-tag'));
     svg.append(gText(bx + 46, y + 29, x.t, 'gm-t2 gm-left'));
     svg.append(gText(bx + 14, y + 52, '人：' + x.p, 'gm-s gm-left'));
-    if (i < 3) svg.append(gEl('line', { x1: bx + w + 2, y1: y + h / 2, x2: bx + w + 14, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+    if (i < 3) svg.append(gEl('line', { x1: bx + w + 2, y1: y + h / 2, x2: bx + w + 14, y2: y + h / 2, class: 'gm-flow', 'marker-end': ar }));
   });
   svg.append(gText(14, 278, '越えてはいけない線 ─ AIの判定案を、確かめずに実行へ流さない。書き込む権限も渡さない', 'gm-t3 gm-left'));
   return svg;
@@ -1644,8 +1654,12 @@ function guideStageSvg() {
 // 11章 実装の標準手順（8段）
 // 🔴 2段×4列の折り返しは、矢先だけ大きくして目立たせても短い線に矢先が乗って崩れて見えた（2026-09-22 PO 指摘）。
 //    実際に一段ずつ下がる階段（8段を縦に、少しずつ右へずらして並べる）に描き直す。
-//    番号バッジの下端→次の番号バッジの上端をつなぐ矢印が、そのまま階段の流れになる。
 //    箱を横いっぱいに広くしたので、各段の右側に短い注記（何を確かめるか）を書く余白ができる（PO「その方が注記も入れやすい」）
+// 🔴 段の間をまっすぐ結ぶ線は、次の箱がまだ描かれる前に描いていたため箱の裏に隠れ、矢先も見えなかった
+//    （2026-09-22 PO「矢も隠れたまま」）。箱を全部描いた**あと**に矢印だけを別の層で上から重ねる2パス方式にする。
+//    さらに、まっすぐな線では「階段」に見えないという指摘（PO 手描きの見本）を受け、箱の外側（左）を回り込んで
+//    次の箱へ刺さる曲線（フック状）にする。SVG のアニメーションは直線に限らず曲線パス（<path>）でも同じ
+//    stroke-dasharray/stroke-dashoffset で流せるため、L字・曲線化に技術的な制約はない。
 function guideStepsSvg() {
   const steps = [
     ['判定の仕方を決める', '確かめ方が決まらないなら、まだ仕組みにしない'],
@@ -1658,26 +1672,31 @@ function guideStepsSvg() {
     ['記録に残す', '次に触る人（と次のAI）へ残す'],
   ];
   const svg = gEl('svg', { viewBox: '0 0 880 588', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順（階段状・8段）' });
-  // 🔴 矢先の大きさが線の太さで倍増していたのが「矢が大きい」の原因（markerUnits 既定=strokeWidth）。
-  //    ここでは矢先を絶対サイズに固定（markerUnits=userSpaceOnUse）し、線の太さと無関係にする
-  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk-steps', viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '9', markerHeight: '9', markerUnits: 'userSpaceOnUse', orient: 'auto' },
+  // 矢先は絶対サイズに固定（markerUnits=userSpaceOnUse）。線の太さを変えても崩れない
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk-steps', viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '13', markerHeight: '13', markerUnits: 'userSpaceOnUse', orient: 'auto' },
     gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar-steps' }))));
   const ar = 'url(#gmk-steps)';
   svg.append(gText(14, 22, '作るときは、この順に進む（飛ばすと、あとで戻ることになる）', 'gm-h'));
-  const barW = 790, barH = 50, rowH = 68, indent = 8, top = 44;
-  const pos = i => ({ x: 14 + i * indent, y: top + i * rowH });
+  const barW = 650, barH = 50, rowH = 68, indent = 20, top = 44, baseX = 60, loopOut = 50;
+  const pos = i => ({ x: baseX + i * indent, y: top + i * rowH });
+  // 1パス目: 箱・バッジ・文字を全部描く
   steps.forEach(([t, note], i) => {
     const { x, y } = pos(i);
     svg.append(gEl('rect', { x, y, width: barW, height: barH, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-q' : '') }));
     svg.append(gEl('circle', { cx: x + 22, cy: y + 25, r: 13, class: 'gm-badge gm-b2' }));
     svg.append(gText(x + 22, y + 30, String(i + 1), 'gm-tag'));
     svg.append(gText(x + 44, y + 30, t, 'gm-t2 gm-left'));
-    svg.append(gText(x + 430, y + 30, note, 'gm-cap gm-left'));
-    if (i < steps.length - 1) {
-      const n = pos(i + 1);
-      svg.append(gEl('line', { x1: x + 22, y1: y + 40, x2: n.x + 22, y2: n.y + 10, class: 'gm-l gm-l-steps', 'marker-end': ar }));
-    }
+    svg.append(gText(x + 336, y + 30, note, 'gm-steps-note gm-left'));
   });
+  // 2パス目: 矢印を最後（いちばん上の層）に描くので、箱の裏に隠れない。
+  // 箱の左端から外へ回り込み、次の箱の左端へ刺さるフック状の曲線
+  for (let i = 0; i < steps.length - 1; i++) {
+    const a = pos(i), b = pos(i + 1);
+    const ey1 = a.y + barH * 0.7, ey2 = b.y + barH * 0.3;
+    const startX = a.x, endX = b.x + 6;
+    const d = `M ${startX} ${ey1} C ${startX - loopOut} ${ey1}, ${startX - loopOut} ${ey2}, ${endX} ${ey2}`;
+    svg.append(gEl('path', { d, class: 'gm-l-steps', 'marker-end': ar }));
+  }
   return svg;
 }
 
@@ -1711,7 +1730,7 @@ function guideRecoverSvg() {
     { t: '残す', s: '記録に1行' },
   ];
   const svg = gEl('svg', { viewBox: '0 0 880 170', class: 'gd-map gd-recover', role: 'img', 'aria-label': '壊れたときの順番' });
-  const ar = gArrow(svg, 'gmk-rec');
+  const ar = gArrowFlow(svg, 'gmk-rec');
   svg.append(gText(14, 22, '壊れたと思ったら、この順。原因探しは後', 'gm-h'));
   const w = 152, h = 70, y = 44;
   steps.forEach((st, i) => {
@@ -1719,7 +1738,7 @@ function guideRecoverSvg() {
     svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-ng' : '') }));
     svg.append(gText(x + w / 2, y + 32, st.t, 'gm-t'));
     svg.append(gText(x + w / 2, y + 54, st.s, 'gm-s'));
-    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + w + 3, y1: y + h / 2, x2: x + w + 18, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+    if (i < steps.length - 1) svg.append(gEl('line', { x1: x + w + 3, y1: y + h / 2, x2: x + w + 18, y2: y + h / 2, class: 'gm-flow', 'marker-end': ar }));
   });
   svg.append(gText(14, 148, 'すぐ相談 ─ 鍵が漏れたかも／身に覚えのない更新がある／偽の画面にパスワードを入れた', 'gm-t3 gm-left'));
   return svg;
@@ -1775,7 +1794,7 @@ function guideJirikiSvg() {
 // を3周ぶん）。文字が多いので、ここでは輪を1回だけ描き、下に「問いが深くなる例」を3つ並べて端的にする
 function guideJirikiLoopSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 312', class: 'gd-map gd-jiriki-loop', role: 'img', 'aria-label': '地力の磨き方。AIとの問答を繰り返すほど、次の問いが一段深くなる' });
-  const ar = gArrow(svg, 'gmk-loop');
+  const ar = gArrowFlow(svg, 'gmk-loop');
   svg.append(gText(14, 22, '地力の磨き方 ─ 同じ問答を、AIと繰り返すほど上がる', 'gm-h'));
 
   const steps = [
@@ -1792,11 +1811,11 @@ function guideJirikiLoopSvg() {
     svg.append(gText(x + 24, y + 33, st.n, 'gm-tag'));
     svg.append(gText(x + 46, y + 33, st.t, 'gm-t2 gm-left'));
     svg.append(gText(x + 16, y + 58, st.s, 'gm-s gm-left'));
-    if (i < 3) svg.append(gEl('line', { x1: x + w + 2, y1: y + h / 2, x2: x + w + 16, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+    if (i < 3) svg.append(gEl('line', { x1: x + w + 2, y1: y + h / 2, x2: x + w + 16, y2: y + h / 2, class: 'gm-flow', 'marker-end': ar }));
   });
   // ④ から ① へ戻る（下を回って輪にする）
   const x1c = 14 + w / 2, x4c = 14 + 3 * (w + 18) + w / 2, ay = y + h + 26;
-  svg.append(gEl('path', { d: `M ${x4c} ${y + h} L ${x4c} ${ay} L ${x1c} ${ay} L ${x1c} ${y + h + 4}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
+  svg.append(gEl('path', { d: `M ${x4c} ${y + h} L ${x4c} ${ay} L ${x1c} ${ay} L ${x1c} ${y + h + 4}`, class: 'gm-flow', 'marker-end': ar }));
   svg.append(gText((x1c + x4c) / 2, ay + 14, 'くり返す', 'gm-s'));
 
   svg.append(gText(14, 200, 'くり返すごとに、問いが一段深くなる（例）', 'gm-t3 gm-left'));
@@ -1811,7 +1830,7 @@ function guideJirikiLoopSvg() {
     svg.append(gEl('rect', { x, y: cy, width: cw, height: ch, rx: 12, class: 'gm-r' }));
     svg.append(gText(x + 14, cy + 21, c.n, 'gm-t3 gm-left'));
     svg.append(gText(x + 14, cy + 42, `「${c.q}」`, 'gm-t2 gm-left'));
-    if (i < 2) svg.append(gEl('line', { x1: x + cw + 2, y1: cy + ch / 2, x2: x + cw + 19, y2: cy + ch / 2, class: 'gm-l', 'marker-end': ar }));
+    if (i < 2) svg.append(gEl('line', { x1: x + cw + 2, y1: cy + ch / 2, x2: x + cw + 19, y2: cy + ch / 2, class: 'gm-flow', 'marker-end': ar }));
   });
   svg.append(gText(14, 290, '鍛える相棒も、AI自身です。聞けば聞くほど、次の問いが鋭くなります。', 'gm-s gm-left'));
   return svg;
@@ -1820,8 +1839,7 @@ function guideJirikiLoopSvg() {
 // 07章 囲う＝読む→書く→実行。実行の前に人が立つ
 function guideHarnessSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-harness', role: 'img', 'aria-label': '触ってよい範囲と、止まって聞く線' });
-  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk3', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
-    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  const arH = gArrowFlow(svg, 'gmk3');
   svg.append(gText(14, 22, '触ってよい範囲は、狭い方から広げる。外に出る操作の前で必ず止まる', 'gm-h'));
   const steps = [
     { t: '読む', s: '見るだけ。まずここから', cls: 'gm-ok' },
@@ -1834,7 +1852,7 @@ function guideHarnessSvg() {
     svg.append(gEl('rect', { x, y, width: w, height: h, rx: 14, class: 'gm-r ' + st.cls }));
     svg.append(gText(x + w / 2, y + 40, st.t, 'gm-t'));
     svg.append(gText(x + w / 2, y + 64, st.s, 'gm-s'));
-    if (i < 2) svg.append(gEl('line', { x1: x + w + 8, y1: y + h / 2, x2: x + w + 44, y2: y + h / 2, class: 'gm-l', 'marker-end': 'url(#gmk3)' }));
+    if (i < 2) svg.append(gEl('line', { x1: x + w + 8, y1: y + h / 2, x2: x + w + 44, y2: y + h / 2, class: 'gm-flow', 'marker-end': arH }));
   });
   // 実行の手前に「人が押す」線
   const gx = 14 + 2 * (w + 56) - 28;
@@ -1942,6 +1960,7 @@ function guideExitSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-exit', role: 'img', 'aria-label': '受け取り方の分かれ道' });
   svg.append(gEl('defs', null, gEl('marker', { id: 'gmk2', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
     gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
+  const arE = gArrowFlow(svg, 'gmk2f');
   svg.append(gEl('rect', { x: 14, y: 94, width: 150, height: 64, rx: 10, class: 'gm-r' }));
   svg.append(gText(89, 119, 'AIから', 'gm-t'));
   svg.append(gText(89, 145, '仕事が返る', 'gm-t'));
@@ -1957,7 +1976,7 @@ function guideExitSvg() {
   ];
   const labels = ['「私が気づく」', '「私の責任」', '「誰も気づかない」'];
   outs.forEach((o, i) => {
-    svg.append(gEl('path', { d: `M 404 125 C 446 125, 446 ${o.y + 29}, 482 ${o.y + 29}`, class: 'gm-l', fill: 'none', 'marker-end': 'url(#gmk2)' }));
+    svg.append(gEl('path', { d: `M 404 125 C 446 125, 446 ${o.y + 29}, 482 ${o.y + 29}`, class: 'gm-flow', 'marker-end': arE }));
     svg.append(gText(440, o.y + (i === 1 ? 20 : 22), labels[i], 'gm-s gm-lab'));
     svg.append(gEl('rect', { x: 504, y: o.y, width: 362, height: 58, rx: 12, class: 'gm-r ' + o.cls }));
     svg.append(gEl('circle', { cx: 504, cy: o.y + 29, r: 17, class: 'gm-badge ' + o.cls }));
@@ -1972,6 +1991,7 @@ function guideExitSvg() {
 function guideWorkShiftSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 392', class: 'gd-map gd-workshift', role: 'img', 'aria-label': 'AIが手を動かす部分を引き受けると、判断の出番が増える。全員が使うのが目的ではない' });
   const ar = gArrow(svg, 'gmk-ws');
+  const arWs = gArrowFlow(svg, 'gmk-ws-f');
   svg.append(gText(14, 22, 'AIが手を動かす部分を引き受けると、判断の出番が増える', 'gm-h'));
 
   svg.append(gEl('rect', { x: 14, y: 92, width: 160, height: 62, rx: 12, class: 'gm-r' }));
@@ -1990,9 +2010,10 @@ function guideWorkShiftSvg() {
     { y: 40, cls: 'gm-ok', t: '判断の出番が増える', s: '暇にはならない', s2: '検討は月1回 → 1日何回にも' },
     { y: 170, cls: 'gm-ng', t: '判断まで手放す', s: '危ない合図', s2: '気づかない間違いが積もる' },
   ];
+  // 🔴 矢印は箱を描いたあとに重ねる（先に矢印→後で箱を描くと、矢先が箱の裏に隠れる。16章と同じ教訓）
   outs.forEach(o => {
-    svg.append(gEl('path', { d: `M 434 135 C 500 135, 500 ${o.y + 42}, 596 ${o.y + 42}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
     svg.append(gEl('rect', { x: 596, y: o.y, width: 270, height: 84, rx: 14, class: 'gm-r ' + o.cls }));
+    svg.append(gEl('path', { d: `M 434 135 C 500 135, 500 ${o.y + 42}, 596 ${o.y + 42}`, class: 'gm-flow', 'marker-end': arWs }));
     svg.append(gText(596 + 16, o.y + 28, o.t, 'gm-t2 gm-left'));
     svg.append(gText(596 + 16, o.y + 48, o.s, 'gm-s gm-left'));
     svg.append(gText(596 + 16, o.y + 66, o.s2, 'gm-s gm-left'));

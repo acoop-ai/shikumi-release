@@ -577,13 +577,33 @@ svg.gd-map .gm-l{stroke:var(--sub);stroke-width:1.8;fill:none}
 /* 16章の階段図だけ、矢印に「進む向き」の動きを付ける（2026-09-22 PO「流れを動きで見せたい」）。
    箱の間が20pxしかなく、共通の細い矢印では線がほぼ見えなかった（2026-09-22 PO 指摘）→太く・色を付けたら
    今度は矢先だけ大きく崩れて見えた（2026-09-22 PO 指摘。markerUnits 既定=strokeWidth で矢先が線の太さ倍に拡大されていたため）。
-   図自体を階段状（縦に8段、段ごとに少しずらす）に描き直し、段の間を十分に空けたので、線はもとの太さに戻す。
-   矢先は app.js 側で markerUnits=userSpaceOnUse にして線の太さと無関係の固定サイズにした。
+   図自体を階段状（縦に8段、段ごとに少しずらす）に描き直したが、ずれが8pxだけで矢印も細く、
+   「もっと矢印で明確な階段状に・右の解説が薄すぎ」（2026-09-22 PO 指摘）。
+   段のずれを20pxへ広げ、線を太く・矢先も大きくする（矢先は app.js 側で markerUnits=userSpaceOnUse 固定なので、
+   太くしても前回のような崩れは起きない）。さらに、直線だと次の箱の裏に隠れ「矢が隠れたまま」になった
+   （2026-09-22 PO 指摘）ので、矢印は箱を全部描いたあとに別層で重ね、箱の外側を回り込んで次の箱へ刺さる
+   曲線（<path>）にした。fill:none は path 化に伴い明示（gm-l の基底クラスを使わなくなったため）。
    他の図の .gm-l／.gm-ar には影響しない（.gd-steps 配下だけに絞る） */
-svg.gd-steps .gm-l-steps{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:4 5;animation:gm-flow 1.1s linear infinite}
+svg.gd-steps .gm-l-steps{stroke:var(--accent);stroke-width:4;fill:none;stroke-dasharray:5 4;animation:gm-flow 1.1s linear infinite}
 svg.gd-steps .gm-ar-steps{fill:var(--accent)}
 @keyframes gm-flow{to{stroke-dashoffset:-18}}
 @media (prefers-reduced-motion: reduce){svg.gd-steps .gm-l-steps{animation:none;stroke-dasharray:none}}
+/* 2026-09-22 PO「ほかの図も矢印を動かせるものは」: 16章で確立した「流れる矢印」を、
+   隙間が十分にある図の順番を示す矢印に広げる（.gm-flow／.gm-ar-flow は .gd-map 全体で使える汎用クラス）。
+   隙間が狭すぎて流れて見えない箇所（guideMapSvg 下段の手順列など）は対象外のまま静止の .gm-l／.gm-ar を使う。
+   矢先は app.js の gArrowFlow() 側で markerUnits=userSpaceOnUse に固定済みなので、線を太くしても崩れない */
+svg.gd-map .gm-flow{stroke:var(--accent);stroke-width:3;fill:none;stroke-dasharray:5 4;animation:gm-flow 1.1s linear infinite}
+svg.gd-map .gm-ar-flow{fill:var(--accent)}
+@media (prefers-reduced-motion: reduce){svg.gd-map .gm-flow{animation:none;stroke-dasharray:none}}
+/* 16章の右側の注記は gm-cap（薄いグレー・斜体・12px）だと薄すぎて読みにくかった（2026-09-22 PO 指摘）。
+   専用クラスで濃く・大きくする（他の図の gm-cap には影響しない）。
+   さらに、①注記の文字がカードの右端からはみ出ていた（実測で最大+26px。座標は app.js 側で修正）
+   ②左の小見出しより右の注記が同格に見え、主従がはっきりしない（2026-09-22 PO 指摘。
+   「文字が大きい／太字／色が付いている、が視認性向上の default」という一般原則）。
+   左の小見出し（.gm-t2）だけこの図に限り一回り大きくし、右の注記は少し控えめ（太さを落とす）にして
+   主従をはっきりさせる（他の図の .gm-t2／.gm-cap には影響しない） */
+svg.gd-steps .gm-t2{font-size:17px}
+svg.gd-steps .gm-steps-note{font-size:14px;font-weight:500;font-style:normal;fill:var(--ink);text-anchor:middle}
 svg.gd-map .gm-loop{stroke-dasharray:5 4}
 svg.gd-map .gm-ar{fill:var(--sub)}
 svg.gd-map .gm-ring{fill-opacity:.20;stroke-width:2.5}
