@@ -1642,38 +1642,42 @@ function guideStageSvg() {
 }
 
 // 11章 実装の標準手順（8段）
-// 🔴 8段を、階段状（1〜4は右へ・4の真下で折れて5〜8は左へ）に描く。
-//    以前は4→5の矢印が図の右端から左端まで一直線に戻り、読みにくかった（2026-09-22 PO）。
-//    折り返しの列（col=3）をそろえるので、曲がり角は短い縦線1本だけで済む
+// 🔴 2段×4列の折り返しは、矢先だけ大きくして目立たせても短い線に矢先が乗って崩れて見えた（2026-09-22 PO 指摘）。
+//    実際に一段ずつ下がる階段（8段を縦に、少しずつ右へずらして並べる）に描き直す。
+//    番号バッジの下端→次の番号バッジの上端をつなぐ矢印が、そのまま階段の流れになる。
+//    箱を横いっぱいに広くしたので、各段の右側に短い注記（何を確かめるか）を書く余白ができる（PO「その方が注記も入れやすい」）
 function guideStepsSvg() {
-  const steps = ['判定の仕方を決める', '目的と完成の形', '全体の地図', '置き場と守り', '小さく作って確かめる', '反映前の4点', '画面で一緒に進める', '記録に残す'];
-  const svg = gEl('svg', { viewBox: '0 0 880 226', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順（階段状）' });
-  // 🔴 隙間が20pxしかなく、共通の矢印（幅7px）では線がほぼ見えなかった（2026-09-22 PO 指摘）。
-  //    この図だけ、大きく・太く・色を付けた専用の矢印にする（他の図の gArrow は変えない）
-  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk-steps', viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '11', markerHeight: '11', orient: 'auto' },
+  const steps = [
+    ['判定の仕方を決める', '確かめ方が決まらないなら、まだ仕組みにしない'],
+    ['目的と完成の形', '前提の一覧を出し、推測した行を人が確かめる'],
+    ['全体の地図', '書き込む人が2人以上いたら、そこが事故の場所'],
+    ['置き場と守り', '公開の場所に、実データを置かない'],
+    ['小さく作って確かめる', '部品の合格でなく、実際の画面・データで通す'],
+    ['反映前の4点', '合格条件／バックアップ／戻す手順／作業時間帯'],
+    ['画面で一緒に進める', '手順書を渡して終わりにしない'],
+    ['記録に残す', '次に触る人（と次のAI）へ残す'],
+  ];
+  const svg = gEl('svg', { viewBox: '0 0 880 588', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順（階段状・8段）' });
+  // 🔴 矢先の大きさが線の太さで倍増していたのが「矢が大きい」の原因（markerUnits 既定=strokeWidth）。
+  //    ここでは矢先を絶対サイズに固定（markerUnits=userSpaceOnUse）し、線の太さと無関係にする
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk-steps', viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '9', markerHeight: '9', markerUnits: 'userSpaceOnUse', orient: 'auto' },
     gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar-steps' }))));
   const ar = 'url(#gmk-steps)';
   svg.append(gText(14, 22, '作るときは、この順に進む（飛ばすと、あとで戻ることになる）', 'gm-h'));
-  const w = 196, h = 56, gapX = 20, rowY = [44, 124];
-  const pos = i => { const row = i < 4 ? 0 : 1; const col = row === 0 ? i : 7 - i; return { row, col, x: 14 + col * (w + gapX), y: rowY[row] }; };
-  steps.forEach((t, i) => {
-    const { row, col, x, y } = pos(i);
-    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-q' : '') }));
-    svg.append(gEl('circle', { cx: x + 22, cy: y + 28, r: 13, class: 'gm-badge gm-b2' }));
-    svg.append(gText(x + 22, y + 33, String(i + 1), 'gm-tag'));
-    svg.append(gText(x + 44, y + 33, t, 'gm-t2 gm-left'));
-    const last = row === 0 ? col < 3 : col > 0;
-    if (last) {
-      // 上段は右へ、下段は左へ（同じ行の次の箱への矢印。隙間20pxのほぼ全部を線にする）
-      const nx = row === 0 ? x + w + 1 : x - 1;
-      const nx2 = row === 0 ? x + w + 19 : x - 19;
-      svg.append(gEl('line', { x1: nx, y1: y + h / 2, x2: nx2, y2: y + h / 2, class: 'gm-l gm-l-steps', 'marker-end': ar }));
+  const barW = 790, barH = 50, rowH = 68, indent = 8, top = 44;
+  const pos = i => ({ x: 14 + i * indent, y: top + i * rowH });
+  steps.forEach(([t, note], i) => {
+    const { x, y } = pos(i);
+    svg.append(gEl('rect', { x, y, width: barW, height: barH, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-q' : '') }));
+    svg.append(gEl('circle', { cx: x + 22, cy: y + 25, r: 13, class: 'gm-badge gm-b2' }));
+    svg.append(gText(x + 22, y + 30, String(i + 1), 'gm-tag'));
+    svg.append(gText(x + 44, y + 30, t, 'gm-t2 gm-left'));
+    svg.append(gText(x + 430, y + 30, note, 'gm-cap gm-left'));
+    if (i < steps.length - 1) {
+      const n = pos(i + 1);
+      svg.append(gEl('line', { x1: x + 22, y1: y + 40, x2: n.x + 22, y2: n.y + 10, class: 'gm-l gm-l-steps', 'marker-end': ar }));
     }
   });
-  // 4（右端・上段）→ 5（右端・下段）は、同じ列を縦に落ちる矢印
-  const p4 = pos(3), p5 = pos(4);
-  svg.append(gEl('line', { x1: p4.x + w / 2, y1: p4.y + h + 1, x2: p5.x + w / 2, y2: p5.y - 1, class: 'gm-l gm-l-steps', 'marker-end': ar }));
-  svg.append(gText(14, 206, '反映前の4点＝合格の条件／バックアップ／元に戻す手順／作業してよい時間帯', 'gm-s gm-left'));
   return svg;
 }
 

@@ -575,10 +575,12 @@ svg.gd-map .gm-cap{font-size:12px;font-style:italic;fill:var(--sub);text-anchor:
 svg.gd-map .gm-lab{font-size:12px}
 svg.gd-map .gm-l{stroke:var(--sub);stroke-width:1.8;fill:none}
 /* 16章の階段図だけ、矢印に「進む向き」の動きを付ける（2026-09-22 PO「流れを動きで見せたい」）。
-   箱の間が20pxしかなく、共通の細い矢印では線がほぼ見えなかった（2026-09-22 PO 指摘）ので、
-   この図の矢印だけ太く・色を付け、専用の大きい矢先（gmk-steps。他の図の gArrow とは別）にする。
+   箱の間が20pxしかなく、共通の細い矢印では線がほぼ見えなかった（2026-09-22 PO 指摘）→太く・色を付けたら
+   今度は矢先だけ大きく崩れて見えた（2026-09-22 PO 指摘。markerUnits 既定=strokeWidth で矢先が線の太さ倍に拡大されていたため）。
+   図自体を階段状（縦に8段、段ごとに少しずらす）に描き直し、段の間を十分に空けたので、線はもとの太さに戻す。
+   矢先は app.js 側で markerUnits=userSpaceOnUse にして線の太さと無関係の固定サイズにした。
    他の図の .gm-l／.gm-ar には影響しない（.gd-steps 配下だけに絞る） */
-svg.gd-steps .gm-l-steps{stroke:var(--accent);stroke-width:3.5;stroke-dasharray:4 5;animation:gm-flow 1.1s linear infinite}
+svg.gd-steps .gm-l-steps{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:4 5;animation:gm-flow 1.1s linear infinite}
 svg.gd-steps .gm-ar-steps{fill:var(--accent)}
 @keyframes gm-flow{to{stroke-dashoffset:-18}}
 @media (prefers-reduced-motion: reduce){svg.gd-steps .gm-l-steps{animation:none;stroke-dasharray:none}}
