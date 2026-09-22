@@ -1642,22 +1642,33 @@ function guideStageSvg() {
 }
 
 // 11章 実装の標準手順（8段）
+// 🔴 8段を、階段状（1〜4は右へ・4の真下で折れて5〜8は左へ）に描く。
+//    以前は4→5の矢印が図の右端から左端まで一直線に戻り、読みにくかった（2026-09-22 PO）。
+//    折り返しの列（col=3）をそろえるので、曲がり角は短い縦線1本だけで済む
 function guideStepsSvg() {
   const steps = ['判定の仕方を決める', '目的と完成の形', '全体の地図', '置き場と守り', '小さく作って確かめる', '反映前の4点', '画面で一緒に進める', '記録に残す'];
-  const svg = gEl('svg', { viewBox: '0 0 880 220', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順' });
+  const svg = gEl('svg', { viewBox: '0 0 880 226', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順（階段状）' });
   const ar = gArrow(svg, 'gmk-steps');
   svg.append(gText(14, 22, '作るときは、この順に進む（飛ばすと、あとで戻ることになる）', 'gm-h'));
-  const w = 196, h = 56;
+  const w = 196, h = 56, gapX = 20, rowY = [44, 124];
+  const pos = i => { const row = i < 4 ? 0 : 1; const col = row === 0 ? i : 7 - i; return { row, col, x: 14 + col * (w + gapX), y: rowY[row] }; };
   steps.forEach((t, i) => {
-    const col = i % 4, row = Math.floor(i / 4);
-    const x = 14 + col * (w + 20), y = 44 + row * 80;
+    const { row, col, x, y } = pos(i);
     svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' + (i === 0 ? ' gm-q' : '') }));
     svg.append(gEl('circle', { cx: x + 22, cy: y + 28, r: 13, class: 'gm-badge gm-b2' }));
     svg.append(gText(x + 22, y + 33, String(i + 1), 'gm-tag'));
     svg.append(gText(x + 44, y + 33, t, 'gm-t2 gm-left'));
-    if (col < 3) svg.append(gEl('line', { x1: x + w + 2, y1: y + h / 2, x2: x + w + 16, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+    const last = row === 0 ? col < 3 : col > 0;
+    if (last) {
+      // 上段は右へ、下段は左へ（同じ行の次の箱への短い矢印）
+      const nx = row === 0 ? x + w + 2 : x - 2;
+      const nx2 = row === 0 ? x + w + 16 : x - 16;
+      svg.append(gEl('line', { x1: nx, y1: y + h / 2, x2: nx2, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+    }
   });
-  svg.append(gEl('path', { d: 'M 842 100 v 12 H 112 v 8', class: 'gm-l', 'marker-end': ar, fill: 'none' }));
+  // 4（右端・上段）→ 5（右端・下段）は、同じ列を縦に落ちるだけの短い矢印
+  const p4 = pos(3), p5 = pos(4);
+  svg.append(gEl('line', { x1: p4.x + w / 2, y1: p4.y + h + 2, x2: p5.x + w / 2, y2: p5.y - 2, class: 'gm-l', 'marker-end': ar }));
   svg.append(gText(14, 206, '反映前の4点＝合格の条件／バックアップ／元に戻す手順／作業してよい時間帯', 'gm-s gm-left'));
   return svg;
 }
@@ -1889,7 +1900,7 @@ function guideGainSvg() {
     { t: '地力 2 × 掛け算', s: '判定できないまま自動化', v: -240, neg: true },
     { t: '地力 8 × 掛け算', s: '判定できる人が仕組みにする', v: 6360, neg: false },
   ];
-  const W = 880, zero = 300, scale = 0.083, rowH = 56, top = 74;
+  const W = 880, zero = 300, scale = 0.078, rowH = 56, top = 74;   // 文字を大きくした分、右端のラベルが収まるよう縮尺を少し詰める
   const svg = gEl('svg', { viewBox: `0 0 ${W} ${top + rows.length * rowH + 44}`, class: 'gd-map gd-gain', role: 'img', 'aria-label': '1年後に手元に残るもの（仮の数字）' });
   svg.append(gText(14, 22, '1年後に手元に残るもの（仮の数字でイメージ）', 'gm-h'));
   // 🔴 この数字自体に意味は無い。関わり方（地力×足し算／掛け算）で結果がどれだけ変わるかを、差だけ見せるための仮の数字（2026-09-22 PO）
@@ -1921,9 +1932,9 @@ function guideExitSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-exit', role: 'img', 'aria-label': '受け取り方の分かれ道' });
   svg.append(gEl('defs', null, gEl('marker', { id: 'gmk2', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
     gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar' }))));
-  svg.append(gEl('rect', { x: 14, y: 96, width: 150, height: 58, rx: 10, class: 'gm-r' }));
-  svg.append(gText(89, 121, 'AIから', 'gm-t'));
-  svg.append(gText(89, 142, '仕事が返る', 'gm-t'));
+  svg.append(gEl('rect', { x: 14, y: 94, width: 150, height: 64, rx: 10, class: 'gm-r' }));
+  svg.append(gText(89, 119, 'AIから', 'gm-t'));
+  svg.append(gText(89, 145, '仕事が返る', 'gm-t'));
   svg.append(gEl('rect', { x: 196, y: 84, width: 208, height: 82, rx: 14, class: 'gm-r gm-q' }));
   svg.append(gText(300, 112, 'これが間違っていたら、', 'gm-t3'));
   svg.append(gText(300, 134, '誰が気づく？', 'gm-t3'));
@@ -1947,6 +1958,48 @@ function guideExitSvg() {
   return svg;
 }
 
+// 04章 AIを入れると、仕事はどう変わるか＝手を動かす部分をAIが引き受け、空いた時間は判断へ回る（暇にはならない）
+function guideWorkShiftSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 392', class: 'gd-map gd-workshift', role: 'img', 'aria-label': 'AIが手を動かす部分を引き受けると、判断の出番が増える。全員が使うのが目的ではない' });
+  const ar = gArrow(svg, 'gmk-ws');
+  svg.append(gText(14, 22, 'AIが手を動かす部分を引き受けると、判断の出番が増える', 'gm-h'));
+
+  svg.append(gEl('rect', { x: 14, y: 92, width: 160, height: 62, rx: 12, class: 'gm-r' }));
+  svg.append(gText(94, 118, '手を動かす部分', 'gm-t'));
+  svg.append(gText(94, 140, '転記・集計・下調べ', 'gm-s'));
+  svg.append(gEl('line', { x1: 178, y1: 123, x2: 206, y2: 123, class: 'gm-l', 'marker-end': ar }));
+
+  svg.append(gEl('rect', { x: 210, y: 76, width: 224, height: 96, rx: 14, class: 'gm-r gm-q' }));
+  svg.append(gText(322, 116, '空いた時間を、', 'gm-t3'));
+  svg.append(gText(322, 138, 'どう使うか', 'gm-t3'));
+  svg.append(gText(322, 158, '（暇になるとは限らない）', 'gm-s'));
+
+  const outs = [
+    { y: 40, cls: 'gm-ok', t: '判断の出番が増える', s: '暇にはならない', s2: '検討は月1回 → 1日何回にも' },
+    { y: 170, cls: 'gm-ng', t: '判断まで手放す', s: '危ない合図', s2: '気づかない間違いが積もる' },
+  ];
+  outs.forEach(o => {
+    svg.append(gEl('path', { d: `M 434 124 C 500 124, 500 ${o.y + 42}, 596 ${o.y + 42}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
+    svg.append(gEl('rect', { x: 596, y: o.y, width: 270, height: 84, rx: 14, class: 'gm-r ' + o.cls }));
+    svg.append(gText(596 + 16, o.y + 28, o.t, 'gm-t2 gm-left'));
+    svg.append(gText(596 + 16, o.y + 48, o.s, 'gm-s gm-left'));
+    svg.append(gText(596 + 16, o.y + 66, o.s2, 'gm-s gm-left'));
+  });
+
+  svg.append(gText(14, 278, '全員が使うことが目的ではありません', 'gm-t3 gm-left'));
+  const who = [
+    { x: 14, w: 280, t: '使う人（一部）', s: '各部署1名ほど。仕組みを作る側' },
+    { x: 310, w: 556, t: '仕組み経由で受け取る大半の人', s: '社内の仕組みに入ったAIの恩恵を、意識せずに受け取る' },
+  ];
+  who.forEach(b => {
+    svg.append(gEl('rect', { x: b.x, y: 292, width: b.w, height: 64, rx: 14, class: 'gm-r' }));
+    svg.append(gText(b.x + 16, 318, b.t, 'gm-t2 gm-left'));
+    svg.append(gText(b.x + 16, 340, b.s, 'gm-s gm-left'));
+  });
+  svg.append(gText(14, 376, '見るのは、業務の足りないところが埋まったか、です。使う人の数では見ません。', 'gm-s gm-left'));
+  return svg;
+}
+
 // ---------- AIエージェント利用ガイド ----------
 const guideMemo = { top: null, hops: [] };   // ガイドを離れたときの位置と戻り道（戻ってきたら元に戻す）
 function viewGuide(anchor) {
@@ -1966,6 +2019,7 @@ function viewGuide(anchor) {
   const CH_FIG = [
     { kw: '足し算と掛け算', make: guideGainSvg },
     { kw: '地力とは何か', make: guideJirikiSvg },
+    { kw: 'AIを入れると、仕事はどう変わるか', make: guideWorkShiftSvg },
     { kw: '完璧に見える', make: guideSeeCheckSvg },
     { kw: '指示する ─ 部下に渡す4つ', make: guideOrderSvg },
     { kw: '囲う', make: guideHarnessSvg },
@@ -1998,6 +2052,8 @@ function viewGuide(anchor) {
     mapBox,
     el('div', { class: 'gd-intro' },
       el('span', { class: 'gd-intro-h', text: G.intro.head }),
+      // 冒頭の一言: AI もこの辞書を読み込んでいる旨（2026-09-22 PO）。原本にあるときだけ出す（無ければ黙って省く）
+      G.intro.note ? el('p', { class: 'gd-note gd-intro-note', text: G.intro.note }) : null,
       // 要点は1枚ずつのカードで見せる（箇条書きだと重さが伝わらない・2026-09-21 PO）。
       // 見出し＝最初の一文、その後ろを補足に回す。原本の文をそのまま使うので、章が増えても崩れない
       el('div', { class: 'gd-cards' }, ...G.intro.points.map((t, i) => {
