@@ -546,7 +546,7 @@ body.locked #side,body.locked #main,body.locked #tip{display:none}
 .gd-top:hover{color:var(--accent)}
 .gd-src{font-size:12.5px;color:var(--sub);margin:16px 0 0}
 
-/* 「この1枚で分かること」の要点カード（1項目＝1枚。見出しを大きく、補足は下に） */
+/* 「このガイドの要点」のカード（1項目＝1枚。見出しを大きく、補足は下に） */
 .gd-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:8px 0 16px}
 .gd-card{position:relative;border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;background:var(--panel);padding:14px 16px 14px 52px;box-shadow:var(--shadow)}
 .gd-card-n{position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
@@ -571,6 +571,7 @@ svg.gd-map .gm-t{font-size:15px;font-weight:700;fill:var(--ink);text-anchor:midd
 svg.gd-map .gm-t2{font-size:13.5px;font-weight:700;fill:var(--ink);text-anchor:middle}
 svg.gd-map .gm-t3{font-size:14px;font-weight:700;fill:var(--accent);text-anchor:middle}
 svg.gd-map .gm-s{font-size:11.5px;fill:var(--sub);text-anchor:middle}
+svg.gd-map .gm-cap{font-size:11.5px;font-style:italic;fill:var(--sub);text-anchor:middle}
 svg.gd-map .gm-lab{font-size:11px}
 svg.gd-map .gm-l{stroke:var(--sub);stroke-width:1.8;fill:none}
 svg.gd-map .gm-loop{stroke-dasharray:5 4}
@@ -588,7 +589,7 @@ svg.gd-map .gm-b2{fill:var(--ok)}
 svg.gd-map .gm-b3{fill:var(--wip)}
 svg.gd-map .gm-gate{stroke:var(--wip);stroke-width:2.5;stroke-dasharray:6 5}
 svg.gd-map .gm-span{stroke-dasharray:4 4}
-svg.gd-jiriki,svg.gd-harness,svg.gd-order,svg.gd-stage,svg.gd-steps,svg.gd-login,svg.gd-recover{min-width:680px}
+svg.gd-jiriki,svg.gd-jiriki-loop,svg.gd-harness,svg.gd-order,svg.gd-stage,svg.gd-steps,svg.gd-login,svg.gd-recover{min-width:680px}
 svg.gd-map .gm-right{text-anchor:end}
 svg.gd-map .gm-zero{stroke:var(--sub);stroke-width:1.5;stroke-dasharray:4 4}
 svg.gd-map .gm-bar-pos{fill:var(--ok);opacity:.85}

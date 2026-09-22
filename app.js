@@ -1751,6 +1751,53 @@ function guideJirikiSvg() {
   return svg;
 }
 
+// 03章 地力の磨き方＝同じ4段の問答を繰り返すほど、次の問いが一段深くなる
+// 2026-09-22 PO「地力の説明に、磨き方も併記するほうが自然」。参考は note の図（聞く→答える→理解して更新する→次の問い、
+// を3周ぶん）。文字が多いので、ここでは輪を1回だけ描き、下に「問いが深くなる例」を3つ並べて端的にする
+function guideJirikiLoopSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 312', class: 'gd-map gd-jiriki-loop', role: 'img', 'aria-label': '地力の磨き方。AIとの問答を繰り返すほど、次の問いが一段深くなる' });
+  const ar = gArrow(svg, 'gmk-loop');
+  svg.append(gText(14, 22, '地力の磨き方 ─ 同じ問答を、AIと繰り返すほど上がる', 'gm-h'));
+
+  const steps = [
+    { n: '1', t: '聞く', s: '分からなければ、そのまま聞く' },
+    { n: '2', t: '答えが返る', s: 'AIが読んで、答える' },
+    { n: '3', t: '自分の言葉にする', s: '言い直せるか確かめる' },
+    { n: '4', t: '一段深く問う', s: '「なぜ？」「この条件だと？」' },
+  ];
+  const w = 195, h = 92, y = 44;
+  steps.forEach((st, i) => {
+    const x = 14 + i * (w + 18);
+    svg.append(gEl('rect', { x, y, width: w, height: h, rx: 12, class: 'gm-r' }));
+    svg.append(gEl('circle', { cx: x + 24, cy: y + 28, r: 13, class: 'gm-badge gm-b' + (i % 3 + 1) }));
+    svg.append(gText(x + 24, y + 33, st.n, 'gm-tag'));
+    svg.append(gText(x + 46, y + 33, st.t, 'gm-t2 gm-left'));
+    svg.append(gText(x + 16, y + 58, st.s, 'gm-s gm-left'));
+    if (i < 3) svg.append(gEl('line', { x1: x + w + 2, y1: y + h / 2, x2: x + w + 16, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+  });
+  // ④ から ① へ戻る（下を回って輪にする）
+  const x1c = 14 + w / 2, x4c = 14 + 3 * (w + 18) + w / 2, ay = y + h + 26;
+  svg.append(gEl('path', { d: `M ${x4c} ${y + h} L ${x4c} ${ay} L ${x1c} ${ay} L ${x1c} ${y + h + 4}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
+  svg.append(gText((x1c + x4c) / 2, ay + 14, 'くり返す', 'gm-s'));
+
+  svg.append(gText(14, 200, 'くり返すごとに、問いが一段深くなる（例）', 'gm-t3 gm-left'));
+  const chips = [
+    { n: '1周目', q: 'これは、どういうこと？' },
+    { n: '2周目', q: 'なぜ、そうなる？' },
+    { n: '3周目', q: 'この条件だと、どこが変わる？' },
+  ];
+  const cw = 266, cy = 214, ch = 54;
+  chips.forEach((c, i) => {
+    const x = 14 + i * (cw + 21);
+    svg.append(gEl('rect', { x, y: cy, width: cw, height: ch, rx: 12, class: 'gm-r' }));
+    svg.append(gText(x + 14, cy + 21, c.n, 'gm-t3 gm-left'));
+    svg.append(gText(x + 14, cy + 42, `「${c.q}」`, 'gm-t2 gm-left'));
+    if (i < 2) svg.append(gEl('line', { x1: x + cw + 2, y1: cy + ch / 2, x2: x + cw + 19, y2: cy + ch / 2, class: 'gm-l', 'marker-end': ar }));
+  });
+  svg.append(gText(14, 290, '鍛える相棒も、AI自身です。聞けば聞くほど、次の問いが鋭くなります。', 'gm-s gm-left'));
+  return svg;
+}
+
 // 07章 囲う＝読む→書く→実行。実行の前に人が立つ
 function guideHarnessSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-harness', role: 'img', 'aria-label': '触ってよい範囲と、止まって聞く線' });
@@ -1812,9 +1859,12 @@ function guideGainSvg() {
     { t: '地力 2 × 掛け算', s: '判定できないまま自動化', v: -240, neg: true },
     { t: '地力 8 × 掛け算', s: '判定できる人が仕組みにする', v: 6360, neg: false },
   ];
-  const W = 880, zero = 300, scale = 0.083, rowH = 56, top = 46;
+  const W = 880, zero = 300, scale = 0.083, rowH = 56, top = 74;
   const svg = gEl('svg', { viewBox: `0 0 ${W} ${top + rows.length * rowH + 44}`, class: 'gd-map gd-gain', role: 'img', 'aria-label': '1年後に手元に残るもの（仮の数字）' });
   svg.append(gText(14, 22, '1年後に手元に残るもの（仮の数字でイメージ）', 'gm-h'));
+  // 🔴 この数字自体に意味は無い。関わり方（地力×足し算／掛け算）で結果がどれだけ変わるかを、差だけ見せるための仮の数字（2026-09-22 PO）
+  //    ゼロの線の「0」ラベル（x=zero, y=top-14）と縦に近いので、間を広く空ける（top を離す）
+  svg.append(gText(14, 38, '※ 数字そのものに意味はありません。関わり方でどれだけ差が出るかを見るための仮の数字です', 'gm-cap gm-left'));
   // ゼロの線
   svg.append(gEl('line', { x1: zero, y1: top - 8, x2: zero, y2: top + rows.length * rowH - 6, class: 'gm-zero' }));
   svg.append(gText(zero, top - 14, '0', 'gm-s'));
@@ -1836,7 +1886,7 @@ function guideGainSvg() {
   return svg;
 }
 
-// 「この1枚で分かること」の図＝仕事が返ってきた後の分かれ道（出口A/B/C）
+// 「このガイドの要点」の図＝仕事が返ってきた後の分かれ道（出口A/B/C）
 function guideExitSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 250', class: 'gd-map gd-exit', role: 'img', 'aria-label': '受け取り方の分かれ道' });
   svg.append(gEl('defs', null, gEl('marker', { id: 'gmk2', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto' },
@@ -1885,7 +1935,7 @@ function viewGuide(anchor) {
   // 章の図は画面側で描く（原本は本文だけを持つ）。題名で対応づける
   const CH_FIG = [
     { kw: '足し算と掛け算', make: guideGainSvg },
-    { kw: '地力とは何か', make: guideJirikiSvg },
+    { kw: '地力とは何か', makes: [guideJirikiSvg, guideJirikiLoopSvg] },
     { kw: '指示する ─ 部下に渡す4つ', make: guideOrderSvg },
     { kw: '囲う', make: guideHarnessSvg },
     { kw: '仕組みに組み込むとき', make: guideStageSvg },
@@ -1897,11 +1947,13 @@ function viewGuide(anchor) {
     const body = el('div', { class: 'gd-body' });
     body.innerHTML = c.html;               // 作成時に無害化済みの HTML だけがここに来る
     const fig = CH_FIG.find(f => c.title.includes(f.kw));
+    // 1章に図が複数のときは makes（配列）、1つだけなら make のまま（2026-09-22: 地力の章に2枚目を追加）
+    const figNodes = fig ? (fig.makes || [fig.make]).map(m => guideFig(m(), pick)) : [];
     return el('section', { class: 'gd-sec', id: 'gd-' + c.id },
       el('h2', { class: 'gd-h2' }, el('span', { class: 'gd-n', text: c.no }), el('span', { text: c.title })),
       c.lead ? el('p', { class: 'gd-lead', text: c.lead }) : null,
       body,
-      fig ? guideFig(fig.make(), pick) : null,
+      ...figNodes,
       el('a', { class: 'gd-top', href: '#/guide', text: '↑ もくじへ' }));
   });
 
