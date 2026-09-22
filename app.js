@@ -1648,7 +1648,11 @@ function guideStageSvg() {
 function guideStepsSvg() {
   const steps = ['判定の仕方を決める', '目的と完成の形', '全体の地図', '置き場と守り', '小さく作って確かめる', '反映前の4点', '画面で一緒に進める', '記録に残す'];
   const svg = gEl('svg', { viewBox: '0 0 880 226', class: 'gd-map gd-steps', role: 'img', 'aria-label': '実装の標準手順（階段状）' });
-  const ar = gArrow(svg, 'gmk-steps');
+  // 🔴 隙間が20pxしかなく、共通の矢印（幅7px）では線がほぼ見えなかった（2026-09-22 PO 指摘）。
+  //    この図だけ、大きく・太く・色を付けた専用の矢印にする（他の図の gArrow は変えない）
+  svg.append(gEl('defs', null, gEl('marker', { id: 'gmk-steps', viewBox: '0 0 10 10', refX: '8.5', refY: '5', markerWidth: '11', markerHeight: '11', orient: 'auto' },
+    gEl('path', { d: 'M0,0 L10,5 L0,10 z', class: 'gm-ar-steps' }))));
+  const ar = 'url(#gmk-steps)';
   svg.append(gText(14, 22, '作るときは、この順に進む（飛ばすと、あとで戻ることになる）', 'gm-h'));
   const w = 196, h = 56, gapX = 20, rowY = [44, 124];
   const pos = i => { const row = i < 4 ? 0 : 1; const col = row === 0 ? i : 7 - i; return { row, col, x: 14 + col * (w + gapX), y: rowY[row] }; };
@@ -1660,15 +1664,15 @@ function guideStepsSvg() {
     svg.append(gText(x + 44, y + 33, t, 'gm-t2 gm-left'));
     const last = row === 0 ? col < 3 : col > 0;
     if (last) {
-      // 上段は右へ、下段は左へ（同じ行の次の箱への短い矢印）
-      const nx = row === 0 ? x + w + 2 : x - 2;
-      const nx2 = row === 0 ? x + w + 16 : x - 16;
-      svg.append(gEl('line', { x1: nx, y1: y + h / 2, x2: nx2, y2: y + h / 2, class: 'gm-l', 'marker-end': ar }));
+      // 上段は右へ、下段は左へ（同じ行の次の箱への矢印。隙間20pxのほぼ全部を線にする）
+      const nx = row === 0 ? x + w + 1 : x - 1;
+      const nx2 = row === 0 ? x + w + 19 : x - 19;
+      svg.append(gEl('line', { x1: nx, y1: y + h / 2, x2: nx2, y2: y + h / 2, class: 'gm-l gm-l-steps', 'marker-end': ar }));
     }
   });
-  // 4（右端・上段）→ 5（右端・下段）は、同じ列を縦に落ちるだけの短い矢印
+  // 4（右端・上段）→ 5（右端・下段）は、同じ列を縦に落ちる矢印
   const p4 = pos(3), p5 = pos(4);
-  svg.append(gEl('line', { x1: p4.x + w / 2, y1: p4.y + h + 2, x2: p5.x + w / 2, y2: p5.y - 2, class: 'gm-l', 'marker-end': ar }));
+  svg.append(gEl('line', { x1: p4.x + w / 2, y1: p4.y + h + 1, x2: p5.x + w / 2, y2: p5.y - 1, class: 'gm-l gm-l-steps', 'marker-end': ar }));
   svg.append(gText(14, 206, '反映前の4点＝合格の条件／バックアップ／元に戻す手順／作業してよい時間帯', 'gm-s gm-left'));
   return svg;
 }
