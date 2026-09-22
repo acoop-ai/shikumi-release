@@ -1827,6 +1827,36 @@ function guideHarnessSvg() {
   return svg;
 }
 
+// 10章「完璧に見える」ときほど、止まる＝確かめられる度合いと、完璧に見える度合いは逆に動く
+// 参考にした図は文字が多かったので、線と2つの箱だけに絞って端的にする（2026-09-22 PO）
+function guideSeeCheckSvg() {
+  const svg = gEl('svg', { viewBox: '0 0 880 334', class: 'gd-map gd-seecheck', role: 'img', 'aria-label': '確かめられる度合いと、完璧に見える度合いは逆に動く' });
+  svg.append(gText(14, 22, '確かめられる度合いと、完璧に見える度合いは、逆に動く', 'gm-h'));
+
+  const xL = 96, xM = 418, xR = 740, yTop = 58, yMid = 104, yBot = 150;
+  svg.append(gEl('line', { x1: xL, y1: 40, x2: xL, y2: 176, class: 'gm-zero' }));
+  svg.append(gEl('polyline', { points: `${xL},${yBot} ${xM},${yMid} ${xR},${yTop}`, class: 'gm-line-rise' }));
+  svg.append(gEl('polyline', { points: `${xL},${yTop} ${xM},${yMid} ${xR},${yBot}`, class: 'gm-line-fall' }));
+  svg.append(gText(xR + 10, yTop, '確かめられる度合い', 'gm-s gm-left gm-c1'));
+  svg.append(gText(xR + 10, yBot, '完璧に見える度合い', 'gm-s gm-left gm-c3'));
+  svg.append(gText(xL, 192, '← 自分が詳しくないこと', 'gm-s gm-left'));
+  svg.append(gText(xR, 192, '自分が詳しいこと →', 'gm-s gm-right'));
+
+  // 🔴 左（出口Aで外に当てる）は終わりではない。くり返し問えば地力が上がり、やがて右（出口B）に近づく（2026-09-22 PO 補足）
+  const boxes = [
+    { x: 14, cls: 'gm-ng', t: '自分が詳しくないこと', s: '見えないから完璧に見える → 出口Aで外に当てる', s2: 'くり返し問えば、地力が上がりBに近づく' },
+    { x: 442, cls: 'gm-ok', t: '自分が詳しいこと', s: '甘いところが見える → 出口Bで自分が決めてよい' },
+  ];
+  boxes.forEach(b => {
+    svg.append(gEl('rect', { x: b.x, y: 204, width: 408, height: 92, rx: 14, class: 'gm-r ' + b.cls }));
+    svg.append(gText(b.x + 16, 230, b.t, 'gm-t2 gm-left'));
+    svg.append(gText(b.x + 16, 254, b.s, 'gm-s gm-left'));
+    if (b.s2) svg.append(gText(b.x + 16, 278, b.s2, 'gm-s gm-left gm-c1'));
+  });
+  svg.append(gText(14, 314, '完璧に見えるのは、答えが良いからではなく、判じる物差しを自分が持っていないから。', 'gm-s gm-left'));
+  return svg;
+}
+
 // 06章 指示する＝渡す4つ（弱い指示→部下に渡す形）
 function guideOrderSvg() {
   const svg = gEl('svg', { viewBox: '0 0 880 240', class: 'gd-map gd-order', role: 'img', 'aria-label': '指示に渡す4つ' });
@@ -1935,9 +1965,11 @@ function viewGuide(anchor) {
   // 章の図は画面側で描く（原本は本文だけを持つ）。題名で対応づける
   const CH_FIG = [
     { kw: '足し算と掛け算', make: guideGainSvg },
-    { kw: '地力とは何か', makes: [guideJirikiSvg, guideJirikiLoopSvg] },
+    { kw: '地力とは何か', make: guideJirikiSvg },
+    { kw: '完璧に見える', make: guideSeeCheckSvg },
     { kw: '指示する ─ 部下に渡す4つ', make: guideOrderSvg },
     { kw: '囲う', make: guideHarnessSvg },
+    { kw: '育てる ─ 上がるのは', make: guideJirikiLoopSvg },
     { kw: '仕組みに組み込むとき', make: guideStageSvg },
     { kw: '実装の標準手順', make: guideStepsSvg },
     { kw: 'ログインと本人確認', make: guideLoginSvg },

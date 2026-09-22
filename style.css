@@ -589,7 +589,9 @@ svg.gd-map .gm-b2{fill:var(--ok)}
 svg.gd-map .gm-b3{fill:var(--wip)}
 svg.gd-map .gm-gate{stroke:var(--wip);stroke-width:2.5;stroke-dasharray:6 5}
 svg.gd-map .gm-span{stroke-dasharray:4 4}
-svg.gd-jiriki,svg.gd-jiriki-loop,svg.gd-harness,svg.gd-order,svg.gd-stage,svg.gd-steps,svg.gd-login,svg.gd-recover{min-width:680px}
+svg.gd-jiriki,svg.gd-jiriki-loop,svg.gd-seecheck,svg.gd-harness,svg.gd-order,svg.gd-stage,svg.gd-steps,svg.gd-login,svg.gd-recover{min-width:680px}
+svg.gd-map .gm-line-rise{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg.gd-map .gm-line-fall{stroke:var(--wip);stroke-width:2.5;stroke-dasharray:5 4;fill:none}
 svg.gd-map .gm-right{text-anchor:end}
 svg.gd-map .gm-zero{stroke:var(--sub);stroke-width:1.5;stroke-dasharray:4 4}
 svg.gd-map .gm-bar-pos{fill:var(--ok);opacity:.85}
