@@ -1896,12 +1896,13 @@ function guideOrderSvg() {
 function guideGainSvg() {
   const rows = [
     { t: '地力 5 × 足し算', s: '調べる・要約する', v: 255, neg: false },
-    { t: '地力 5 × 掛け算', s: '仕組みにする', v: 2250, neg: false },
-    { t: '地力 2 × 掛け算', s: '判定できないまま自動化', v: -240, neg: true },
-    { t: '地力 8 × 掛け算', s: '判定できる人が仕組みにする', v: 6360, neg: false },
+    { t: '地力 5 × 掛け算', s: '仕組みにする', v: 2250, neg: false, why: '同じ地力でも、掛け算に変えると約9倍' },
+    { t: '地力 2 × 掛け算', s: '判定できないまま自動化', v: -240, neg: true, why: '掛け算のまま地力が落ちると、赤字になる' },
+    { t: '地力 8 × 掛け算', s: '判定できる人が仕組みにする', v: 6360, neg: false, why: '地力を上げれば、大きく伸びる' },
   ];
-  const W = 880, zero = 300, scale = 0.078, rowH = 56, top = 74;   // 文字を大きくした分、右端のラベルが収まるよう縮尺を少し詰める
-  const svg = gEl('svg', { viewBox: `0 0 ${W} ${top + rows.length * rowH + 44}`, class: 'gd-map gd-gain', role: 'img', 'aria-label': '1年後に手元に残るもの（仮の数字）' });
+  // 🔴 前の行から何が変わって数字が動いたか（why）を、行ごとに1行で添える（2026-09-22 PO「上から順に、端的な解説を」）
+  const W = 880, zero = 300, scale = 0.078, rowH = 74, top = 74;   // 文字を大きくした分、右端のラベルが収まるよう縮尺を少し詰める
+  const svg = gEl('svg', { viewBox: `0 0 ${W} ${top + rows.length * rowH + 50}`, class: 'gd-map gd-gain', role: 'img', 'aria-label': '1年後に手元に残るもの（仮の数字）' });
   svg.append(gText(14, 22, '1年後に手元に残るもの（仮の数字でイメージ）', 'gm-h'));
   // 🔴 この数字自体に意味は無い。関わり方（地力×足し算／掛け算）で結果がどれだけ変わるかを、差だけ見せるための仮の数字（2026-09-22 PO）
   //    ゼロの線の「0」ラベル（x=zero, y=top-14）と縦に近いので、間を広く空ける（top を離す）
@@ -1915,13 +1916,14 @@ function guideGainSvg() {
     const x = r.neg ? zero - w : zero;
     svg.append(gText(14, y + 15, r.t, 'gm-t2 gm-left'));
     svg.append(gText(14, y + 35, r.s, 'gm-s gm-left'));
+    if (r.why) svg.append(gText(14, y + 54, '→ ' + r.why, 'gm-cap gm-left'));
     svg.append(gEl('rect', { x, y: y + 8, width: Math.max(w, 3), height: 26, rx: 6, class: 'gm-bar ' + (r.neg ? 'gm-bar-neg' : 'gm-bar-pos') }));
     const lx = r.neg ? x - 8 : x + w + 8;
     const lab = gText(lx, y + 26, (r.v > 0 ? '+' : '') + r.v.toLocaleString('ja-JP'), 'gm-t2 ' + (r.neg ? '' : 'gm-left'));
     if (r.neg) lab.setAttribute('class', 'gm-t2 gm-right');
     svg.append(lab);
   });
-  const yb = top + rows.length * rowH + 16;
+  const yb = top + rows.length * rowH + 18;
   svg.append(gText(14, yb, '地力が目安 2.4 を下回ると、掛け算は赤字になる（間違いも一緒に量産されるため）', 'gm-s gm-left'));
   svg.append(gText(14, yb + 18, '足し算も、確かめずに通せばマイナスになる。掛け算は、それが毎日・全員ぶん続く', 'gm-s gm-left'));
   return svg;
@@ -1969,17 +1971,19 @@ function guideWorkShiftSvg() {
   svg.append(gText(94, 140, '転記・集計・下調べ', 'gm-s'));
   svg.append(gEl('line', { x1: 178, y1: 123, x2: 206, y2: 123, class: 'gm-l', 'marker-end': ar }));
 
-  svg.append(gEl('rect', { x: 210, y: 76, width: 224, height: 96, rx: 14, class: 'gm-r gm-q' }));
+  // 🔴 「暇になるとは限らない」ではなく言い切る：暇になった＝価値を生めていない証拠（2026-09-22 PO）。2行ぶん箱を広げる
+  svg.append(gEl('rect', { x: 210, y: 76, width: 224, height: 118, rx: 14, class: 'gm-r gm-q' }));
   svg.append(gText(322, 116, '空いた時間を、', 'gm-t3'));
   svg.append(gText(322, 138, 'どう使うか', 'gm-t3'));
-  svg.append(gText(322, 158, '（暇になるとは限らない）', 'gm-s'));
+  svg.append(gText(322, 160, '暇になるということは、', 'gm-s'));
+  svg.append(gText(322, 180, '価値が生まれていない証拠', 'gm-s'));
 
   const outs = [
     { y: 40, cls: 'gm-ok', t: '判断の出番が増える', s: '暇にはならない', s2: '検討は月1回 → 1日何回にも' },
     { y: 170, cls: 'gm-ng', t: '判断まで手放す', s: '危ない合図', s2: '気づかない間違いが積もる' },
   ];
   outs.forEach(o => {
-    svg.append(gEl('path', { d: `M 434 124 C 500 124, 500 ${o.y + 42}, 596 ${o.y + 42}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
+    svg.append(gEl('path', { d: `M 434 135 C 500 135, 500 ${o.y + 42}, 596 ${o.y + 42}`, class: 'gm-l', fill: 'none', 'marker-end': ar }));
     svg.append(gEl('rect', { x: 596, y: o.y, width: 270, height: 84, rx: 14, class: 'gm-r ' + o.cls }));
     svg.append(gText(596 + 16, o.y + 28, o.t, 'gm-t2 gm-left'));
     svg.append(gText(596 + 16, o.y + 48, o.s, 'gm-s gm-left'));
